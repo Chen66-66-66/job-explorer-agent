@@ -38,6 +38,8 @@ export const api = {
   confirmRequirement: (id, appliesToAllPositions) =>
     request('POST', `/requirements/${id}/confirm`, { appliesToAllPositions }),
 
+  askAgent: (question) => request('POST', '/agent/ask', { question }),
+
   notes: (id) => request('GET', `/companies/${id}/notes`),
   addNote: (id, body) => request('POST', `/companies/${id}/notes`, body),
 }

@@ -38,7 +38,10 @@ public class EligibilityChecker {
 		}
 		CheckResult raw = checkByType(r, p, today);
 		if (raw.verdict() == Verdict.UNKNOWN) {
-			return raw;
+			// 规则本身已判待核实，也要把出处问题说出来，避免把找不到的引用当成原文
+			return r.getOrigin() == RequirementOrigin.LLM && !r.isQuoteVerified()
+					? raw.withVerdict(Verdict.UNKNOWN, "原文出处未能核对；" + raw.reason())
+					: raw;
 		}
 		String computed = "规则计算为「" + label(raw.verdict()) + "」（" + raw.reason() + "）";
 		if (r.getOrigin() == RequirementOrigin.LLM && !r.isQuoteVerified()) {

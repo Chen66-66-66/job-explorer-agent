@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import io.github.jobexplorer.config.CandidateProfile;
-import io.github.jobexplorer.service.ExtractionFailedException;
+import io.github.jobexplorer.service.ModelCallException;
 import io.github.jobexplorer.service.LlmRequirementExtractor;
 import io.github.jobexplorer.service.ModelNotConfiguredException;
 import io.github.jobexplorer.service.NotFoundException;
@@ -50,9 +50,9 @@ public class SystemController {
 			return new ErrorBody(ex.getMessage());
 		}
 
-		@ExceptionHandler(ExtractionFailedException.class)
+		@ExceptionHandler(ModelCallException.class)
 		@ResponseStatus(HttpStatus.BAD_GATEWAY)
-		ErrorBody extractionFailed(ExtractionFailedException ex) {
+		ErrorBody modelCallFailed(ModelCallException ex) {
 			return new ErrorBody(ex.getMessage());
 		}
 

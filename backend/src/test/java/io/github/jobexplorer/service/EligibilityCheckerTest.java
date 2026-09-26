@@ -214,6 +214,16 @@ class EligibilityCheckerTest {
 	}
 
 	@Test
+	void 规则本身判待核实时_也要说明引用找不到() {
+		Requirement r = llmReq(RequirementType.AGE);
+		r.setMaxAge(24);
+		r.setQuoteVerified(false);
+		CheckResult result = checker.check(r, profile, today);
+		assertThat(result.verdict()).isEqualTo(Verdict.UNKNOWN);
+		assertThat(result.reason()).startsWith("原文出处未能核对");
+	}
+
+	@Test
 	void 模型抽取未经人工确认_通过和不通过都只算待核实() {
 		Requirement fail = llmReq(RequirementType.ENGLISH);
 		fail.setLevel("CET-6");

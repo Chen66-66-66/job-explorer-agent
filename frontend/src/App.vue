@@ -11,7 +11,10 @@ onMounted(async () => {
 <template>
   <header class="topbar">
     <div class="page row spread">
-      <router-link to="/" class="brand">校招岗位探索</router-link>
+      <nav class="row">
+        <router-link to="/" class="brand">校招岗位探索</router-link>
+        <router-link to="/agent">问 Agent</router-link>
+      </nav>
       <span v-if="status" class="muted">
         档案：{{ status.candidateName }} ·
         大模型：{{ status.llmAvailable ? '已启用' : '未配置（可手动录入条件）' }}
@@ -36,5 +39,6 @@ onMounted(async () => {
 .brand {
   font-weight: 600;
   color: var(--text);
+  margin-right: 8px;
 }
 </style>

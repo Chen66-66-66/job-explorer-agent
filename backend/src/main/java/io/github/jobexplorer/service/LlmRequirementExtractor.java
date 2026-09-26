@@ -72,11 +72,11 @@ public class LlmRequirementExtractor {
 				.entity(ExtractedRequirement.Batch.class);
 		}
 		catch (RuntimeException ex) {
-			throw new ExtractionFailedException("模型调用失败或返回格式无法解析：" + ex.getMessage(), ex);
+			throw new ModelCallException("模型调用失败或返回格式无法解析：" + ex.getMessage(), ex);
 		}
 		// 缺少 requirements 字段说明这次输出不可用，不能当作「原文没有条件」
 		if (batch == null || batch.requirements() == null) {
-			throw new ExtractionFailedException("模型返回内容缺少条件列表，本次结果不采用", null);
+			throw new ModelCallException("模型返回内容缺少条件列表，本次结果不采用", null);
 		}
 		return batch.requirements();
 	}
