@@ -41,6 +41,12 @@ final class Tally {
 
 	int baseDeterminate;
 
+	int sysOverconfident;
+
+	int baseOverconfident;
+
+	int humanLabeled;
+
 	void add(RequirementMatcher.Result m) {
 		gold += m.gold();
 		correct += m.correct();
@@ -49,8 +55,10 @@ final class Tally {
 		spurious += m.spurious();
 	}
 
-	void addVerdicts(Verdict goldV, Verdict sysV, Verdict baseV) {
+	void addVerdicts(Verdict goldV, boolean human, Verdict sysV, Verdict baseV) {
 		judgements++;
+		humanLabeled += human ? 1 : 0;
+		sysOverconfident += overconfident(goldV, sysV) ? 1 : 0;
 		sysExcluded += wronglyExcluded(goldV, sysV) ? 1 : 0;
 		sysIncluded += wronglyIncluded(goldV, sysV) ? 1 : 0;
 		sysDeterminate += determinate(sysV) ? 1 : 0;
@@ -59,6 +67,7 @@ final class Tally {
 			baseExcluded += wronglyExcluded(goldV, baseV) ? 1 : 0;
 			baseIncluded += wronglyIncluded(goldV, baseV) ? 1 : 0;
 			baseDeterminate += determinate(baseV) ? 1 : 0;
+			baseOverconfident += overconfident(goldV, baseV) ? 1 : 0;
 		}
 	}
 
@@ -71,22 +80,28 @@ final class Tally {
 		return got == Verdict.PASS && gold == Verdict.FAIL;
 	}
 
+	/** 本该待核实，却给了确定结论。 */
+	static boolean overconfident(Verdict gold, Verdict got) {
+		return gold == Verdict.UNKNOWN && determinate(got);
+	}
+
 	private static boolean determinate(Verdict v) {
 		return v == Verdict.PASS || v == Verdict.FAIL;
 	}
 
 	String row(String split) {
 		return "| " + split + " | " + gold + " | " + correct + " | " + wrongParams + " | " + missed + " | " + spurious
-				+ " | " + quoteVerified + "/" + extracted + " | " + judgements + " | " + sysExcluded + " | "
+				+ " | " + quoteVerified + "/" + extracted + " | " + judgements + "（人工 " + humanLabeled + "） | " + sysExcluded + " | "
 				+ (baseJudgements == 0 ? "—" : baseExcluded) + " | " + sysIncluded + " | "
 				+ (baseJudgements == 0 ? "—" : baseIncluded) + " | " + pct(sysDeterminate, judgements) + " | "
-				+ (baseJudgements == 0 ? "—" : pct(baseDeterminate, baseJudgements)) + " |\n";
+				+ (baseJudgements == 0 ? "—" : pct(baseDeterminate, baseJudgements)) + " | " + sysOverconfident + " | "
+				+ (baseJudgements == 0 ? "—" : baseOverconfident) + " |\n";
 	}
 
 	String summaryLine() {
 		return "条件 " + correct + "/" + gold + " 正确，遗漏 " + missed + "，多抽 " + spurious + "；判断 " + judgements
-				+ " 次，本系统错误排除 " + sysExcluded + "，对照组错误排除 " + baseExcluded + "（对照组 " + baseJudgements
-				+ " 次）";
+				+ " 次（人工判定 " + humanLabeled + "），错误排除 本系统 " + sysExcluded + " / 对照组 " + baseExcluded
+				+ "，过度确定 本系统 " + sysOverconfident + " / 对照组 " + baseOverconfident;
 	}
 
 	private static String pct(int a, int b) {

@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import io.github.jobexplorer.domain.Requirement;
+import io.github.jobexplorer.service.EligibilityChecker;
 
 /**
  * 把模型抽取出的条件和标准答案逐条配对。
@@ -102,20 +103,7 @@ final class RequirementMatcher {
 	}
 
 	private static String certKey(String level) {
-		if (level == null) {
-			return null;
-		}
-		String t = level.toUpperCase().replace(" ", "");
-		if (t.contains("六级") || t.contains("CET6") || t.contains("CET-6")) {
-			return "CET-6";
-		}
-		if (t.contains("四级") || t.contains("CET4") || t.contains("CET-4")) {
-			return "CET-4";
-		}
-		if (t.contains("雅思")) {
-			return "IELTS";
-		}
-		return t;
+		return level == null ? null : EligibilityChecker.normalizeCert(level);
 	}
 
 	private static String describe(Requirement r) {

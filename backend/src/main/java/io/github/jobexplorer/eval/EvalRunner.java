@@ -170,7 +170,9 @@ public class EvalRunner implements ApplicationRunner {
 
 		sb.append("\n| 求职者 | 标准答案 | 本系统 | 对照组 |\n|---|---|---|---|\n");
 		for (NamedProfile np : profiles) {
-			Verdict goldV = overall(gold, np.profile(), c.asOf());
+			Verdict derived = overall(gold, np.profile(), c.asOf());
+			Verdict human = c.expected().get(np.id());
+			Verdict goldV = human != null ? human : derived;
 			Verdict sysV = overall(extracted, np.profile(), c.asOf());
 			Verdict baseV = null;
 			if (runBaseline) {
@@ -181,8 +183,9 @@ public class EvalRunner implements ApplicationRunner {
 					t.baselineFailures++;
 				}
 			}
-			t.addVerdicts(goldV, sysV, baseV);
-			sb.append("| ").append(np.id()).append(" | ").append(label(goldV)).append(" | ")
+			t.addVerdicts(goldV, human != null, sysV, baseV);
+			String goldCell = human != null ? label(human) + "（人工）" : label(derived) + "（规则推算）";
+			sb.append("| ").append(np.id()).append(" | ").append(goldCell).append(" | ")
 				.append(mark(goldV, sysV)).append(" | ").append(baseV == null ? "—" : mark(goldV, baseV)).append(" |\n");
 		}
 		return sb.toString();
@@ -199,6 +202,9 @@ public class EvalRunner implements ApplicationRunner {
 		}
 		if (Tally.wronglyIncluded(gold, got)) {
 			return s + " ⚠错误放行";
+		}
+		if (Tally.overconfident(gold, got)) {
+			return s + " ·过度确定";
 		}
 		return s;
 	}
@@ -223,6 +229,8 @@ public class EvalRunner implements ApplicationRunner {
 				- **错误排除**：标准答案为「符合」或「待核实」，却被判为「不符合」。这是最要紧的错误：本来可以报的机会被删掉了。
 				- **错误放行**：标准答案为「不符合」，却被判为「符合」。
 				- **确定率**：给出「符合 / 不符合」而不是「待核实」的比例，防止系统靠全答「待核实」来回避错误。
+				- **过度确定**：标准答案为「待核实」，却给出了「符合」或「不符合」。
+				- **标准答案**标「人工」的由人逐条判定；标「规则推算」的由被测规则根据标准条件算出，等于自己给自己出答案，只作参考。
 				- 本系统一栏模拟用户对抽取结果全部点了确认，衡量的是抽取质量本身；实际使用时未确认的条件只会显示「待核实」。
 				- 样本量小，结果只作诊断参考，不代表普遍可靠性。
 

@@ -232,7 +232,8 @@ public class EligibilityChecker {
 				: CheckResult.of(r, Verdict.FAIL, "已于 " + r.getMaxDate() + " 截止");
 	}
 
-	static String normalizeCert(String type) {
+	/** 统一英语证书名称，如「六级」「CET6」都认作 CET-6。测评程序也用它。 */
+	public static String normalizeCert(String type) {
 		if (type == null) {
 			return "";
 		}
@@ -243,11 +244,14 @@ public class EligibilityChecker {
 		if (t.contains("四级") || t.equals("CET4") || t.equals("CET-4")) {
 			return "CET-4";
 		}
-		if (t.contains("雅思")) {
-			return "IELTS";
+		if (t.contains("托业") || t.contains("TOEIC")) {
+			return "TOEIC";
 		}
-		if (t.contains("托福")) {
+		if (t.contains("托福") || t.contains("TOEFL")) {
 			return "TOEFL";
+		}
+		if (t.contains("雅思") || t.contains("IELTS")) {
+			return "IELTS";
 		}
 		return t;
 	}
