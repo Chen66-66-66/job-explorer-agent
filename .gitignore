@@ -1,0 +1,16 @@
+# 本地数据库与真实个人档案，绝不提交
+backend/data/
+**/profile.local.yml
+.env
+*.env
+
+# 构建产物与依赖
+backend/target/
+frontend/node_modules/
+frontend/dist/
+
+# 编辑器
+.idea/
+.vscode/
+*.iml
+.DS_Store

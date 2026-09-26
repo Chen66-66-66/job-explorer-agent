@@ -1,0 +1,16 @@
+# 虚构的演示档案。不要在这里写真实信息。
+# 真实档案请复制本文件到 backend/data/profile.local.yml 再修改，该路径已被 .gitignore 排除。
+candidate:
+  name: 张三（演示）
+  degree: 硕士
+  majors:
+    - 计算机科学与技术
+  graduation-date: 2027-06-30
+  birth-date: 2000-03-15
+  overseas-degree: true
+  overseas-cert-planned: true
+  english:
+    - type: CET-4
+      score: 480
+    - type: IELTS
+      score: 6.5
