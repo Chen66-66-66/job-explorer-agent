@@ -79,6 +79,18 @@ class EligibilityCheckerTest {
 	}
 
 	@Test
+	void 通过六级按425分线判断_只有成绩单不算通过() {
+		CandidateProfile cet6Low = new CandidateProfile("测试", "硕士", List.of(), null, null, false, false,
+				List.of(new EnglishCert("CET-6", 410.0)));
+		Requirement r = req(RequirementType.ENGLISH);
+		r.setLevel("CET-6");
+		assertThat(checker.check(r, cet6Low, today).verdict()).isEqualTo(Verdict.FAIL);
+		CandidateProfile cet6Pass = new CandidateProfile("测试", "硕士", List.of(), null, null, false, false,
+				List.of(new EnglishCert("CET-6", 425.0)));
+		assertThat(checker.check(r, cet6Pass, today).verdict()).isEqualTo(Verdict.PASS);
+	}
+
+	@Test
 	void 要求四级而只有六级_不自行推断可替代() {
 		CandidateProfile onlyCet6 = new CandidateProfile("测试", "硕士", List.of(), null, null, false, false,
 				List.of(new EnglishCert("CET-6", 300.0)));

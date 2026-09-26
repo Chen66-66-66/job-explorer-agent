@@ -1,0 +1,16 @@
+{
+  "id": "sample-01-branching",
+  "split": "sample",
+  "source": "虚构样例：学历分支年龄、英语二选一、境内外不同毕业要求",
+  "text": "一、应聘条件\n1. 2027届高校毕业生，本科生年龄不超过25周岁，硕士研究生年龄不超过28周岁（年龄计算截至2027年7月31日）。\n2. 英语要求：通过大学英语六级（CET-6）或雅思6.0及以上，满足其一即可。\n3. 境内高校毕业生须在2027年7月31日前取得毕业证；境外院校毕业生须在2026年1月1日至2027年8月31日期间毕业，并取得教育部留学服务中心认证。\n4. 报名截止日期：2026年11月15日。\n5. 中共党员、有项目经验者优先。",
+  "gold": [
+    {"type": "AGE", "appliesTo": "本科生", "maxAge": 25, "ageReferenceDate": "2027-07-31"},
+    {"type": "AGE", "appliesTo": "硕士研究生", "maxAge": 28, "ageReferenceDate": "2027-07-31"},
+    {"type": "ENGLISH", "alternativeGroup": "e1", "level": "CET-6"},
+    {"type": "ENGLISH", "alternativeGroup": "e1", "level": "IELTS", "minScore": 6.0},
+    {"type": "GRADUATION_WINDOW", "appliesTo": "境内高校毕业生", "maxDate": "2027-07-31"},
+    {"type": "GRADUATION_WINDOW", "appliesTo": "境外院校毕业生", "minDate": "2026-01-01", "maxDate": "2027-08-31"},
+    {"type": "OVERSEAS_CERT", "appliesTo": "境外院校毕业生"},
+    {"type": "DEADLINE", "maxDate": "2026-11-15"}
+  ]
+}

@@ -88,7 +88,7 @@ public class RequirementService {
 
 	/** 保存一条条件：核对原文引用，并检查解析出的数值是否出现在引用里。人工录入也不例外。 */
 	public Requirement verifyAndSave(Requirement r) {
-		reverify(r);
+		runSourceChecks(r);
 		return requirements.save(r);
 	}
 
@@ -121,7 +121,7 @@ public class RequirementService {
 	public void onJdChanged(Position pos) {
 		pos.setCheckedAt(null);
 		for (Requirement r : requirements.findByPositionIdOrderByIdAsc(pos.getId())) {
-			reverify(r);
+			runSourceChecks(r);
 			if (r.getOrigin() == RequirementOrigin.LLM) {
 				r.setConfirmed(false);
 			}
@@ -132,7 +132,8 @@ public class RequirementService {
 		requirements.deleteById(requirementId);
 	}
 
-	private void reverify(Requirement r) {
+	/** 对照原文做程序核对（不保存）：引用是否在原文中、数值是否在引用中。测评程序也用它。 */
+	public void runSourceChecks(Requirement r) {
 		r.setQuoteVerified(quoteVerifier.verify(r.getQuote(), r.sourceText()));
 		String mismatch = numberMismatch(r);
 		if (mismatch != null) {
@@ -177,7 +178,8 @@ public class RequirementService {
 		return n.contains(".") ? n.replaceAll("0+$", "").replaceAll("\\.$", "") : n.replaceFirst("^0+(?=\\d)", "");
 	}
 
-	private Requirement fromExtracted(Company company, ExtractedRequirement e) {
+	/** 把模型抽取结果转成条件对象（不保存）。测评程序也用它，保证测的就是正式流程。 */
+	public static Requirement fromExtracted(Company company, ExtractedRequirement e) {
 		String quote = blankToNull(e.quote());
 		String description = blankToNull(e.description());
 		Requirement r = new Requirement(company, parseType(e.type()), RequirementOrigin.LLM,

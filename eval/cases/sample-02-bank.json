@@ -1,0 +1,14 @@
+{
+  "id": "sample-02-bank",
+  "split": "sample",
+  "source": "虚构样例：银行科技岗常见写法，含「或同等水平」和「优先」干扰项",
+  "text": "招聘对象：2027年应届毕业生，境外院校毕业生须在2026年1月1日至2027年7月31日期间毕业，并在报到前取得教育部留学服务中心学历学位认证。\n学历要求：全日制本科及以上学历。\n专业要求：计算机科学与技术、软件工程、数据科学与大数据技术等相关专业。\n英语要求：大学英语四级425分及以上或同等水平。\n报名截止时间：2026年10月18日。\n熟悉金融业务者优先。",
+  "gold": [
+    {"type": "GRADUATION_WINDOW", "appliesTo": "境外院校毕业生", "minDate": "2026-01-01", "maxDate": "2027-07-31"},
+    {"type": "OVERSEAS_CERT", "appliesTo": "境外院校毕业生"},
+    {"type": "DEGREE", "level": "本科"},
+    {"type": "MAJOR", "listValues": "计算机科学与技术、软件工程、数据科学与大数据技术"},
+    {"type": "ENGLISH", "level": "CET-4", "minScore": 425, "allowEquivalent": true},
+    {"type": "DEADLINE", "maxDate": "2026-10-18"}
+  ]
+}

@@ -31,6 +31,9 @@ public class EligibilityChecker {
 
 	private static final Map<String, Integer> DEGREE_RANK = Map.of("大专", 1, "本科", 2, "硕士", 3, "博士", 4);
 
+	/** 大学英语四、六级通常以 425 分作为「通过」的分数线。 */
+	private static final double CET_PASS_LINE = 425;
+
 	public CheckResult check(Requirement r, CandidateProfile p, LocalDate today) {
 		Applicability applicability = applicability(r.getAppliesTo(), p);
 		if (applicability == Applicability.NO) {
@@ -155,6 +158,17 @@ public class EligibilityChecker {
 	}
 
 	private CheckResult scoreVerdict(Requirement r, EnglishCert cert) {
+		String type = normalizeCert(cert.type());
+		boolean cet = type.equals("CET-4") || type.equals("CET-6");
+		if (r.getMinScore() == null && cet) {
+			// 「通过四 / 六级」按全国大学英语考试 425 分通过线理解；只有成绩单、没过线不算通过
+			if (cert.score() == null) {
+				return CheckResult.of(r, Verdict.UNKNOWN, "要求通过 " + type + "，档案未记录分数，无法判断是否过 425 分线");
+			}
+			return cert.score() >= CET_PASS_LINE
+					? CheckResult.of(r, Verdict.PASS, type + " " + fmt(cert.score()) + " 分，达到 425 分通过线")
+					: CheckResult.of(r, Verdict.FAIL, type + " " + fmt(cert.score()) + " 分，未达到 425 分通过线");
+		}
 		if (r.getMinScore() == null) {
 			return CheckResult.of(r, Verdict.PASS, "持有 " + cert.type());
 		}

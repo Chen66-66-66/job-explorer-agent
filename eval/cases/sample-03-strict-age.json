@@ -1,0 +1,13 @@
+{
+  "id": "sample-03-strict-age",
+  "split": "sample",
+  "source": "虚构样例：「未满」年龄、分数线、政治面貌",
+  "text": "应聘人员须为2027届全日制硕士研究生，年龄未满30周岁（以2027年6月30日为准）；须通过大学英语六级考试，成绩不低于425分；须为中共党员（含预备党员）。报名截止时间：2026年12月31日。",
+  "gold": [
+    {"type": "DEGREE", "level": "硕士"},
+    {"type": "AGE", "maxAge": 30, "ageStrict": true, "ageReferenceDate": "2027-06-30"},
+    {"type": "ENGLISH", "level": "CET-6", "minScore": 425},
+    {"type": "OTHER", "description": "须为中共党员（含预备党员）"},
+    {"type": "DEADLINE", "maxDate": "2026-12-31"}
+  ]
+}

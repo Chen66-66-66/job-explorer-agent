@@ -1,0 +1,38 @@
+[
+  {
+    "id": "硕士·境外·雅思",
+    "profile": {
+      "name": "虚构甲", "degree": "硕士", "majors": ["计算机科学与技术"],
+      "graduationDate": "2027-06-30", "birthDate": "2000-03-15",
+      "overseasDegree": true, "overseasCertPlanned": true,
+      "english": [{"type": "CET-4", "score": 480}, {"type": "IELTS", "score": 6.5}]
+    }
+  },
+  {
+    "id": "本科·境内·六级",
+    "profile": {
+      "name": "虚构乙", "degree": "本科", "majors": ["软件工程"],
+      "graduationDate": "2027-06-30", "birthDate": "2004-08-01",
+      "overseasDegree": false, "overseasCertPlanned": false,
+      "english": [{"type": "CET-6", "score": 520}]
+    }
+  },
+  {
+    "id": "硕士·境外·年龄偏大·仅PTE",
+    "profile": {
+      "name": "虚构丙", "degree": "硕士", "majors": ["电子信息"],
+      "graduationDate": "2027-07-15", "birthDate": "1998-12-01",
+      "overseasDegree": true, "overseasCertPlanned": true,
+      "english": [{"type": "PTE", "score": 59}]
+    }
+  },
+  {
+    "id": "硕士·境内·六级未过线",
+    "profile": {
+      "name": "虚构丁", "degree": "硕士", "majors": ["数据科学与大数据技术"],
+      "graduationDate": "2027-06-30", "birthDate": "2001-05-20",
+      "overseasDegree": false, "overseasCertPlanned": false,
+      "english": [{"type": "CET-4", "score": 440}, {"type": "CET-6", "score": 410}]
+    }
+  }
+]
