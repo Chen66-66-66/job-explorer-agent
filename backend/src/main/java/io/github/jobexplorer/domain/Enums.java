@@ -18,7 +18,7 @@ public final class Enums {
 
 	/** 报名条件的类型，决定用哪条规则判断。 */
 	public enum RequirementType {
-		DEGREE, MAJOR, ENGLISH, GRADUATION_WINDOW, AGE, OVERSEAS_CERT, DEADLINE, OTHER
+		DEGREE, MAJOR, ENGLISH, GRADUATION_WINDOW, GRADUATION_COHORT, AGE, OVERSEAS_CERT, DEADLINE, OTHER
 	}
 
 	/** 条件从哪里来：模型抽取、人工录入、演示数据。 */

@@ -36,7 +36,7 @@ const needs = computed(() => ({
   minDate: form.type === 'GRADUATION_WINDOW',
   maxDate: ['GRADUATION_WINDOW', 'DEADLINE'].includes(form.type),
   age: form.type === 'AGE',
-  list: form.type === 'MAJOR',
+  list: ['MAJOR', 'GRADUATION_COHORT'].includes(form.type),
 }))
 
 function blankToNull(v) {
@@ -93,7 +93,7 @@ async function save() {
       <label v-if="needs.age">年龄上限（周岁）<input v-model.number="form.maxAge" type="number" /></label>
       <label v-if="needs.age">年龄计算截止日<input v-model="form.ageReferenceDate" type="date" /></label>
       <label v-if="needs.age" class="row"><input v-model="form.ageStrict" type="checkbox" style="width: auto" /> 原文是「未满 N 周岁」</label>
-      <label v-if="needs.list">专业名单（顿号分隔）<input v-model="form.listValues" /></label>
+      <label v-if="needs.list">{{ form.type === 'MAJOR' ? '专业名单（顿号分隔）' : '届别年份（如 2027，多个用顿号分隔）' }}<input v-model="form.listValues" /></label>
       <label>适用对象（只针对部分人时填，如「硕士研究生」）<input v-model="form.appliesTo" /></label>
       <label>二选一组名（满足其一即可的几条填同一个名字）<input v-model="form.alternativeGroup" /></label>
     </div>

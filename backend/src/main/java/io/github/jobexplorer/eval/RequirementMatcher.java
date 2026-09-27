@@ -65,6 +65,7 @@ final class RequirementMatcher {
 			case ENGLISH -> Objects.equals(certKey(g.getLevel()), certKey(e.getLevel()))
 					&& Objects.equals(g.getMinScore(), e.getMinScore())
 					&& g.isAllowEquivalent() == e.isAllowEquivalent();
+			case GRADUATION_COHORT -> Objects.equals(listKey(g.getListValues()), listKey(e.getListValues()));
 			case GRADUATION_WINDOW -> Objects.equals(g.getMinDate(), e.getMinDate())
 					&& Objects.equals(g.getMaxDate(), e.getMaxDate());
 			case AGE -> Objects.equals(g.getMaxAge(), e.getMaxAge()) && g.isAgeStrict() == e.isAgeStrict()

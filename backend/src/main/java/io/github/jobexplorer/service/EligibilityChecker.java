@@ -107,6 +107,7 @@ public class EligibilityChecker {
 			case MAJOR -> checkMajor(r, p);
 			case ENGLISH -> checkEnglish(r, p);
 			case GRADUATION_WINDOW -> checkGraduationWindow(r, p);
+			case GRADUATION_COHORT -> checkCohort(r, p);
 			case AGE -> checkAge(r, p, today);
 			case OVERSEAS_CERT -> checkOverseasCert(r, p);
 			case DEADLINE -> checkDeadline(r, today);
@@ -197,6 +198,23 @@ public class EligibilityChecker {
 			return CheckResult.of(r, Verdict.FAIL, "毕业时间 " + g + " 晚于窗口终点 " + r.getMaxDate());
 		}
 		return CheckResult.of(r, Verdict.PASS, "毕业时间 " + g + " 在窗口内");
+	}
+
+	/**
+	 * 届别要求，如「2027 届」。毕业年份一致判符合；不一致只判待核实、不判不符合：
+	 * 境外院校毕业生、跨年毕业的届别口径各家不同，直接排除容易误删机会。
+	 */
+	private CheckResult checkCohort(Requirement r, CandidateProfile p) {
+		List<String> years = splitList(r.getListValues()).stream().map(y -> y.replace("届", "").trim()).toList();
+		if (years.isEmpty() || p.graduationDate() == null) {
+			return CheckResult.of(r, Verdict.UNKNOWN, "缺少届别要求或毕业时间");
+		}
+		String mine = String.valueOf(p.graduationDate().getYear());
+		if (years.contains(mine)) {
+			return CheckResult.of(r, Verdict.PASS, "预计 " + p.graduationDate() + " 毕业，属于 " + mine + " 届");
+		}
+		return CheckResult.of(r, Verdict.UNKNOWN, "档案毕业年份 " + mine + " 与要求的 " + String.join("、", years)
+				+ " 届不一致；届别口径各家不同（尤其境外院校），需按公告确认");
 	}
 
 	private CheckResult checkAge(Requirement r, CandidateProfile p, LocalDate today) {

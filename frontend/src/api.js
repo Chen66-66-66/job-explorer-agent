@@ -57,6 +57,7 @@ export const TYPE_LABEL = {
   MAJOR: '专业',
   ENGLISH: '英语',
   GRADUATION_WINDOW: '毕业时间',
+  GRADUATION_COHORT: '届别',
   AGE: '年龄',
   OVERSEAS_CERT: '留服认证',
   DEADLINE: '截止日',

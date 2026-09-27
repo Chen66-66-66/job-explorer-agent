@@ -23,7 +23,8 @@ public class LlmRequirementExtractor {
 			- MAJOR：专业要求。listValues 填专业名称，用顿号分隔，照原文写。
 			- ENGLISH：英语要求。level 填证书类型（CET-4、CET-6、IELTS、TOEFL、TOEIC、PTE 等），
 			  minScore 填最低分（原文没写分数就不填），allowEquivalent 表示是否写了「或同等水平」「或其他等效证书」。
-			- GRADUATION_WINDOW：毕业时间范围。minDate / maxDate 填 yyyy-MM-dd，原文没写的一侧不填。
+			- GRADUATION_WINDOW：毕业时间范围。只在原文写了具体日期时使用，minDate / maxDate 填 yyyy-MM-dd，原文没写的一侧不填。
+			- GRADUATION_COHORT：届别要求，如「2027届高校毕业生」。listValues 填年份，多个用顿号分隔（如「2026、2027」）。
 			- AGE：年龄上限。maxAge 填整数；「未满 N 周岁」时 ageStrict 为 true，「不超过 N 周岁」时为 false；
 			  ageReferenceDate 填年龄计算截止日（yyyy-MM-dd），原文没写就不填。
 			- OVERSEAS_CERT：要求境外学历取得教育部留学服务中心认证。

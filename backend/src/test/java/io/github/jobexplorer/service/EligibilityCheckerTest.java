@@ -238,6 +238,20 @@ class EligibilityCheckerTest {
 	}
 
 	@Test
+	void 届别一致判符合_不一致只判待核实不排除() {
+		// 档案 2027-06-30 毕业
+		Requirement r = req(RequirementType.GRADUATION_COHORT);
+		r.setListValues("2027届");
+		assertThat(verdict(r)).isEqualTo(Verdict.PASS);
+		r.setListValues("2026、2027");
+		assertThat(verdict(r)).isEqualTo(Verdict.PASS);
+		r.setListValues("2026");
+		assertThat(verdict(r)).isEqualTo(Verdict.UNKNOWN);
+		r.setListValues(null);
+		assertThat(verdict(r)).isEqualTo(Verdict.UNKNOWN);
+	}
+
+	@Test
 	void 专业精确匹配才通过_相近只算待核实() {
 		Requirement r = req(RequirementType.MAJOR);
 		r.setListValues("软件工程、计算机科学与技术");

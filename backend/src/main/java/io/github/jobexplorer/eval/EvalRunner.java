@@ -244,6 +244,7 @@ public class EvalRunner implements ApplicationRunner {
 			case MAJOR -> "专业";
 			case ENGLISH -> "英语";
 			case GRADUATION_WINDOW -> "毕业时间";
+			case GRADUATION_COHORT -> "届别";
 			case AGE -> "年龄";
 			case OVERSEAS_CERT -> "留服认证";
 			case DEADLINE -> "截止日";
