@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -142,12 +143,19 @@ public class RequirementService {
 	}
 
 	/**
-	 * 解析出的关键数值（分数、年龄、日期）必须出现在引用原文里。
-	 * 例如原文「六级不少于 500 分」却解析成 200，就会在这里被发现。
+	 * 解析出的关键数值（分数、年龄、日期、届别年份）必须出现在引用原文里。
+	 * 例如原文「六级不少于 500 分」却解析成 200、「2026届」却解析成 2027，都会在这里被发现。
+	 * 注意：数值出现在引用中只能证明数值存在，不能证明语义理解正确，所以仍需人工确认。
 	 */
 	static String numberMismatch(Requirement r) {
+		List<String> cohortYears = r.getType() == RequirementType.GRADUATION_COHORT && r.getListValues() != null
+				? Arrays.stream(r.getListValues().split("[,，、;；/\\s]+")).map(y -> y.replace("届", "").trim())
+					.filter(y -> !y.isEmpty()).toList()
+				: List.of();
+		List<String> badFormat = cohortYears.stream().filter(y -> !y.matches("\\d{4}")).toList();
+		String formatIssue = badFormat.isEmpty() ? null : "届别年份「" + String.join("、", badFormat) + "」格式不正确";
 		if (r.getQuote() == null || r.getQuote().isBlank()) {
-			return null;
+			return formatIssue;
 		}
 		List<String> numbers = new ArrayList<>();
 		Matcher m = NUMBER.matcher(r.getQuote());
@@ -155,6 +163,9 @@ public class RequirementService {
 			numbers.add(stripZeros(m.group()));
 		}
 		List<String> missing = new ArrayList<>();
+		cohortYears.stream()
+			.filter(y -> y.matches("\\d{4}") && !numbers.contains(y))
+			.forEach(y -> missing.add("届别 " + y));
 		if (r.getMinScore() != null && !numbers.contains(stripZeros(String.valueOf(r.getMinScore())))) {
 			missing.add("分数 " + stripZeros(String.valueOf(r.getMinScore())));
 		}
@@ -166,7 +177,8 @@ public class RequirementService {
 				missing.add("日期 " + d);
 			}
 		}
-		return missing.isEmpty() ? null : "解析出的" + String.join("、", missing) + " 未出现在引用原文中";
+		String missingIssue = missing.isEmpty() ? null : "解析出的" + String.join("、", missing) + " 未出现在引用原文中";
+		return formatIssue == null ? missingIssue : missingIssue == null ? formatIssue : formatIssue + "；" + missingIssue;
 	}
 
 	private static boolean dateInNumbers(LocalDate d, List<String> numbers) {

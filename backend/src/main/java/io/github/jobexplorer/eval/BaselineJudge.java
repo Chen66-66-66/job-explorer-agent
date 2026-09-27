@@ -61,6 +61,6 @@ final class BaselineJudge {
 		return "学历 " + p.degree() + "；专业 " + String.join("、", p.majors()) + "；预计毕业 " + p.graduationDate()
 				+ "；出生日期 " + p.birthDate() + "；" + (p.overseasDegree()
 						? "境外院校学历" + (p.overseasCertPlanned() ? "，将按要求办理留服认证" : "") : "境内院校学历")
-				+ "；英语 " + english;
+				+ (p.cohort() == null ? "" : "；本人申报届别 " + p.cohort()) + "；英语 " + english;
 	}
 }

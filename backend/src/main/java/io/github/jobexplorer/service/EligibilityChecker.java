@@ -201,20 +201,35 @@ public class EligibilityChecker {
 	}
 
 	/**
-	 * 届别要求，如「2027 届」。毕业年份一致判符合；不一致只判待核实、不判不符合：
-	 * 境外院校毕业生、跨年毕业的届别口径各家不同，直接排除容易误删机会。
+	 * 届别要求，如「2027 届」。届别由招聘单位认定，口径各家不同（尤其境外院校、跨年毕业），
+	 * 毕业年份相同不能证明属于该届。所以：
+	 * - 只有本人在档案中申报了届别且一致，才判符合，并注明依据是本人申报；
+	 * - 没有申报时，毕业年份一致也只判待核实；
+	 * - 任何不一致都只判待核实、不判不符合，避免误删机会。
+	 * 人工确认「抽取无误」只说明要求读对了，不等于确认本人属于该届。
 	 */
 	private CheckResult checkCohort(Requirement r, CandidateProfile p) {
 		List<String> years = splitList(r.getListValues()).stream().map(y -> y.replace("届", "").trim()).toList();
-		if (years.isEmpty() || p.graduationDate() == null) {
-			return CheckResult.of(r, Verdict.UNKNOWN, "缺少届别要求或毕业时间");
+		if (years.isEmpty()) {
+			return CheckResult.of(r, Verdict.UNKNOWN, "缺少届别要求");
 		}
-		String mine = String.valueOf(p.graduationDate().getYear());
-		if (years.contains(mine)) {
-			return CheckResult.of(r, Verdict.PASS, "预计 " + p.graduationDate() + " 毕业，属于 " + mine + " 届");
+		String wanted = String.join("、", years);
+		if (p.cohort() != null) {
+			String declared = String.valueOf(p.cohort());
+			return years.contains(declared)
+					? CheckResult.of(r, Verdict.PASS, "按本人在档案中申报的 " + declared + " 届，与要求一致")
+					: CheckResult.of(r, Verdict.UNKNOWN, "本人申报为 " + declared + " 届，要求 " + wanted
+							+ " 届；部分单位接受往届或另有口径，需按公告确认");
 		}
-		return CheckResult.of(r, Verdict.UNKNOWN, "档案毕业年份 " + mine + " 与要求的 " + String.join("、", years)
-				+ " 届不一致；届别口径各家不同（尤其境外院校），需按公告确认");
+		if (p.graduationDate() == null) {
+			return CheckResult.of(r, Verdict.UNKNOWN, "档案未申报届别，也没有毕业时间");
+		}
+		String gradYear = String.valueOf(p.graduationDate().getYear());
+		return years.contains(gradYear)
+				? CheckResult.of(r, Verdict.UNKNOWN, "毕业年份 " + gradYear + " 与要求的 " + wanted
+						+ " 届一致，但届别由招聘单位认定，档案未申报届别，届别资格待核实")
+				: CheckResult.of(r, Verdict.UNKNOWN, "毕业年份 " + gradYear + " 与要求的 " + wanted
+						+ " 届不一致；届别口径各家不同（尤其境外院校），需按公告确认");
 	}
 
 	private CheckResult checkAge(Requirement r, CandidateProfile p, LocalDate today) {

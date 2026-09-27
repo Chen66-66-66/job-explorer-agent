@@ -24,7 +24,7 @@ class EligibilityCheckerTest {
 	/** 1999-05-21 出生的硕士，境外学历，四级 425、PTE 59。 */
 	private final CandidateProfile profile = new CandidateProfile("测试", "硕士", List.of("计算机科学与技术"),
 			LocalDate.of(2027, 6, 30), LocalDate.of(1999, 5, 21), true, false,
-			List.of(new EnglishCert("CET-4", 425.0), new EnglishCert("PTE", 59.0)));
+			List.of(new EnglishCert("CET-4", 425.0), new EnglishCert("PTE", 59.0)), null);
 
 	private final LocalDate today = LocalDate.of(2026, 9, 26);
 
@@ -81,19 +81,19 @@ class EligibilityCheckerTest {
 	@Test
 	void 通过六级按425分线判断_只有成绩单不算通过() {
 		CandidateProfile cet6Low = new CandidateProfile("测试", "硕士", List.of(), null, null, false, false,
-				List.of(new EnglishCert("CET-6", 410.0)));
+				List.of(new EnglishCert("CET-6", 410.0)), null);
 		Requirement r = req(RequirementType.ENGLISH);
 		r.setLevel("CET-6");
 		assertThat(checker.check(r, cet6Low, today).verdict()).isEqualTo(Verdict.FAIL);
 		CandidateProfile cet6Pass = new CandidateProfile("测试", "硕士", List.of(), null, null, false, false,
-				List.of(new EnglishCert("CET-6", 425.0)));
+				List.of(new EnglishCert("CET-6", 425.0)), null);
 		assertThat(checker.check(r, cet6Pass, today).verdict()).isEqualTo(Verdict.PASS);
 	}
 
 	@Test
 	void 要求四级而只有六级_不自行推断可替代() {
 		CandidateProfile onlyCet6 = new CandidateProfile("测试", "硕士", List.of(), null, null, false, false,
-				List.of(new EnglishCert("CET-6", 300.0)));
+				List.of(new EnglishCert("CET-6", 300.0)), null);
 		Requirement r = req(RequirementType.ENGLISH);
 		r.setLevel("CET-4");
 		r.setMinScore(500.0);
@@ -238,17 +238,53 @@ class EligibilityCheckerTest {
 	}
 
 	@Test
-	void 届别一致判符合_不一致只判待核实不排除() {
-		// 档案 2027-06-30 毕业
+	void 届别_未申报时同年毕业也只判待核实() {
+		// 档案 2027-06-30 毕业，但未申报届别：届别由招聘单位认定，年份相同不能证明属于该届
 		Requirement r = req(RequirementType.GRADUATION_COHORT);
 		r.setListValues("2027届");
-		assertThat(verdict(r)).isEqualTo(Verdict.PASS);
-		r.setListValues("2026、2027");
-		assertThat(verdict(r)).isEqualTo(Verdict.PASS);
+		CheckResult result = checker.check(r, profile, today);
+		assertThat(result.verdict()).isEqualTo(Verdict.UNKNOWN);
+		assertThat(result.reason()).contains("届别资格待核实");
 		r.setListValues("2026");
 		assertThat(verdict(r)).isEqualTo(Verdict.UNKNOWN);
 		r.setListValues(null);
 		assertThat(verdict(r)).isEqualTo(Verdict.UNKNOWN);
+	}
+
+	@Test
+	void 届别_本人申报一致才判符合_并注明依据() {
+		CandidateProfile declared2027 = new CandidateProfile("测试", "硕士", List.of(), LocalDate.of(2027, 6, 30), null,
+				false, false, List.of(), 2027);
+		Requirement r = req(RequirementType.GRADUATION_COHORT);
+		r.setListValues("2026、2027");
+		CheckResult result = checker.check(r, declared2027, today);
+		assertThat(result.verdict()).isEqualTo(Verdict.PASS);
+		assertThat(result.reason()).contains("本人").contains("申报");
+		r.setListValues("2028");
+		assertThat(checker.check(r, declared2027, today).verdict()).as("不一致也不直接排除").isEqualTo(Verdict.UNKNOWN);
+	}
+
+	@Test
+	void 届别_人工确认抽取无误不等于确认本人属于该届() {
+		Requirement r = llmReq(RequirementType.GRADUATION_COHORT);
+		r.setListValues("2027");
+		r.setConfirmed(true);
+		r.setAppliesToAllPositions(true);
+		assertThat(verdict(r)).isEqualTo(Verdict.UNKNOWN);
+	}
+
+	@Test
+	void 届别_同年毕业但另有毕业窗口时由窗口决定() {
+		// 要求「2027届」，另有截至 2027-08-31 的毕业窗口；候选人 2027-12 毕业
+		CandidateProfile lateGrad = new CandidateProfile("测试", "硕士", List.of(), LocalDate.of(2027, 12, 15), null,
+				true, true, List.of(), null);
+		Requirement cohort = req(RequirementType.GRADUATION_COHORT);
+		cohort.setListValues("2027");
+		Requirement window = req(RequirementType.GRADUATION_WINDOW);
+		window.setMaxDate(LocalDate.of(2027, 8, 31));
+		assertThat(checker.check(cohort, lateGrad, today).verdict()).isEqualTo(Verdict.UNKNOWN);
+		List<CheckResult> results = List.of(checker.check(cohort, lateGrad, today), checker.check(window, lateGrad, today));
+		assertThat(VerdictAggregator.overall(results, true)).isEqualTo(Verdict.FAIL);
 	}
 
 	@Test
@@ -318,7 +354,7 @@ class EligibilityCheckerTest {
 	void 留服认证_档案注明计划办理才算符合() {
 		Requirement r = req(RequirementType.OVERSEAS_CERT);
 		assertThat(verdict(r)).isEqualTo(Verdict.UNKNOWN);
-		CandidateProfile planned = new CandidateProfile("测试", "硕士", List.of(), null, null, true, true, List.of());
+		CandidateProfile planned = new CandidateProfile("测试", "硕士", List.of(), null, null, true, true, List.of(), null);
 		assertThat(checker.check(r, planned, today).verdict()).isEqualTo(Verdict.PASS);
 	}
 

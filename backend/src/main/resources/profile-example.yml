@@ -9,6 +9,8 @@ candidate:
   birth-date: 2000-03-15
   overseas-degree: true
   overseas-cert-planned: true
+  # 本人申报的届别，可不填；届别由招聘单位认定，不由毕业日期推算
+  cohort: 2027
   english:
     - type: CET-4
       score: 480

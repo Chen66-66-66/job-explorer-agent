@@ -10,6 +10,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * 默认读取 classpath 下的虚构示例（profile-example.yml）；
  * 本地放一份 data/profile.local.yml 即可覆盖，该文件不进 Git。
  * overseasCertPlanned：境外学历本人是否计划按要求办理留服认证。
+ * cohort：本人申报的届别（如 2027），可空。它是本人申报，不是由毕业日期推算的结论。
  */
 @ConfigurationProperties(prefix = "candidate")
 public record CandidateProfile(
@@ -20,7 +21,8 @@ public record CandidateProfile(
 		LocalDate birthDate,
 		boolean overseasDegree,
 		boolean overseasCertPlanned,
-		List<EnglishCert> english) {
+		List<EnglishCert> english,
+		Integer cohort) {
 
 	public CandidateProfile {
 		majors = majors == null ? List.of() : List.copyOf(majors);

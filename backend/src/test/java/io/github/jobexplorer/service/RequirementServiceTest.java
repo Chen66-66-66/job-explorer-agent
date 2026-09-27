@@ -53,4 +53,28 @@ class RequirementServiceTest {
 		assertThat(RequirementService.parseDate("", "起始日期", issues)).isNull();
 		assertThat(issues).hasSize(1);
 	}
+	private Requirement cohort(String quote, String years) {
+		Requirement r = new Requirement(new Company("测试公司"), RequirementType.GRADUATION_COHORT, RequirementOrigin.LLM, "届别");
+		r.setQuote(quote);
+		r.setListValues(years);
+		return r;
+	}
+
+	@Test
+	void 届别年份抽错_能被发现() {
+		assertThat(RequirementService.numberMismatch(cohort("面向2026届高校毕业生", "2027"))).contains("届别 2027");
+		assertThat(RequirementService.numberMismatch(cohort("面向2027届高校毕业生", "2027届"))).isNull();
+	}
+
+	@Test
+	void 届别多个年份_逐个核对() {
+		assertThat(RequirementService.numberMismatch(cohort("2026届、2027届毕业生均可报名", "2026、2027"))).isNull();
+		assertThat(RequirementService.numberMismatch(cohort("2027届毕业生", "2026、2027"))).contains("届别 2026");
+	}
+
+	@Test
+	void 届别年份格式不对_即使没有引用也要报告() {
+		assertThat(RequirementService.numberMismatch(cohort(null, "27届"))).contains("格式不正确");
+		assertThat(RequirementService.numberMismatch(cohort("27届毕业生", "27"))).contains("格式不正确");
+	}
 }
