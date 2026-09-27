@@ -6,7 +6,7 @@ import VerdictBadge from './VerdictBadge.vue'
 import { ORIGIN_LABEL, TYPE_LABEL } from '../api.js'
 
 defineProps({ results: { type: Array, required: true } })
-const emit = defineEmits(['confirm'])
+const emit = defineEmits(['confirm', 'remove'])
 
 // 公司级条件确认时，是否同时确认「适用于本批次全部岗位」
 const appliesAll = reactive({})
@@ -37,12 +37,15 @@ const appliesAll = reactive({})
           {{ r.quoteVerified ? '✓ 已在原文中找到' : '✗ 原文中找不到这句' }}
         </span>
       </div>
-      <div v-if="!r.confirmed" class="row confirm">
-        <span class="muted">核对引用和解析结果无误后：</span>
-        <label v-if="r.companyLevel" class="row inline">
-          <input v-model="appliesAll[r.requirementId]" type="checkbox" /> 适用于本批次全部岗位
-        </label>
-        <button @click="emit('confirm', r.requirementId, !!appliesAll[r.requirementId])">确认</button>
+      <div class="row confirm">
+        <template v-if="!r.confirmed">
+          <span class="muted">核对引用和解析结果无误后：</span>
+          <label v-if="r.companyLevel" class="row inline">
+            <input v-model="appliesAll[r.requirementId]" type="checkbox" /> 适用于本批次全部岗位
+          </label>
+          <button @click="emit('confirm', r.requirementId, !!appliesAll[r.requirementId])">确认</button>
+        </template>
+        <button class="link" @click="emit('remove', r.requirementId)">删除（抽错了）</button>
       </div>
     </li>
   </ul>
@@ -70,5 +73,13 @@ const appliesAll = reactive({})
 
 .inline input {
   width: auto;
+}
+
+.link {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 0 4px;
 }
 </style>

@@ -45,6 +45,9 @@ const markChecked = () => run(() => api.markPositionChecked(positionId))
 const setStatus = (status) => run(() => api.updatePosition(positionId, { ...position.value, status }))
 
 const confirm = (id, appliesAll) => run(() => api.confirmRequirement(id, appliesAll))
+const remove = (id) => {
+  if (window.confirm('确定删除这条条件？重新抽取时模型可能再次抽出它。')) run(() => api.deleteRequirement(id))
+}
 
 onMounted(load)
 </script>
@@ -91,7 +94,7 @@ onMounted(load)
       <ul v-if="assessment.pending.length" class="pending">
         <li v-for="p in assessment.pending" :key="p">{{ p }}</li>
       </ul>
-      <CheckList :results="assessment.results" @confirm="confirm" />
+      <CheckList :results="assessment.results" @confirm="confirm" @remove="remove" />
     </section>
 
     <section class="card">
