@@ -18,3 +18,8 @@ frontend/dist/
 # 测评：真实公告与报告只留在本机
 eval/private/
 eval/reports/
+
+# 本人笔记与 Office 临时文件，不上传
+*.docx
+~$*
+.Rhistory

@@ -26,8 +26,10 @@ import org.springframework.stereotype.Component;
 import io.github.jobexplorer.config.CandidateProfile;
 import io.github.jobexplorer.domain.Announcement;
 import io.github.jobexplorer.domain.Company;
+import io.github.jobexplorer.domain.Enums.RequirementType;
 import io.github.jobexplorer.domain.Enums.Verdict;
 import io.github.jobexplorer.domain.Requirement;
+import io.github.jobexplorer.service.CheckResult;
 import io.github.jobexplorer.service.EligibilityChecker;
 import io.github.jobexplorer.service.ExtractedRequirement;
 import io.github.jobexplorer.service.LlmRequirementExtractor;
@@ -66,6 +68,8 @@ public class EvalRunner implements ApplicationRunner {
 
 	private final JsonMapper json = JsonMapper.builder().build();
 
+	private final List<CaseDetail> details = new ArrayList<>();
+
 	public EvalRunner(LlmRequirementExtractor extractor, RequirementService requirementService,
 			EligibilityChecker checker, ObjectProvider<ChatModel> chatModel,
 			@Value("${jobexplorer.eval.dir}") String dir,
@@ -95,19 +99,21 @@ public class EvalRunner implements ApplicationRunner {
 		log.info("测评开始：{} 份公告 × {} 个求职者", cases.size(), profiles.size());
 
 		BaselineJudge baseline = new BaselineJudge(model);
+		details.clear();
 		Map<String, Tally> tallies = new LinkedHashMap<>();
-		StringBuilder details = new StringBuilder();
+		StringBuilder caseSections = new StringBuilder();
 		for (EvalCase c : cases) {
 			log.info("  {}（{}）", c.id(), c.split());
 			Tally t = tallies.computeIfAbsent(c.split(), k -> new Tally());
-			details.append(runCase(c, profiles, baseline, t));
+			caseSections.append(runCase(c, profiles, baseline, t));
 		}
 
-		String report = render(cases.size(), profiles, tallies, details);
+		String report = render(cases.size(), profiles, tallies, caseSections);
 		Path out = dir.resolve("reports")
 			.resolve("eval-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")) + ".md");
 		Files.createDirectories(out.getParent());
 		Files.writeString(out, report, StandardCharsets.UTF_8);
+		json.writeValue(out.resolveSibling("details-latest.json").toFile(), details);
 		log.info("测评完成，报告：{}", out.toAbsolutePath());
 		tallies.forEach((split, t) -> log.info("[{}] {}", split, t.summaryLine()));
 	}
@@ -169,26 +175,80 @@ public class EvalRunner implements ApplicationRunner {
 		m.problems().forEach(p -> sb.append("- ").append(p).append("\n"));
 
 		sb.append("\n| 求职者 | 标准答案 | 本系统 | 对照组 |\n|---|---|---|---|\n");
+		List<DetailRow> rows = new ArrayList<>();
 		for (NamedProfile np : profiles) {
 			Verdict derived = overall(gold, np.profile(), c.asOf());
 			Verdict human = c.expected().get(np.id());
 			Verdict goldV = human != null ? human : derived;
 			Verdict sysV = overall(extracted, np.profile(), c.asOf());
 			Verdict baseV = null;
+			String baseWhy = null;
 			if (runBaseline) {
 				try {
-					baseV = baseline.judge(c.text(), np.profile(), c.asOf());
+					BaselineJudge.Judgement j = baseline.judge(c.text(), np.profile(), c.asOf());
+					baseV = j.verdict();
+					baseWhy = j.reason();
 				}
 				catch (RuntimeException ex) {
 					t.baselineFailures++;
 				}
 			}
+			rows.add(new DetailRow(np.id(), derived, explain(gold, np.profile(), c.asOf()), human, sysV,
+					explain(extracted, np.profile(), c.asOf()), baseV, baseWhy));
 			t.addVerdicts(goldV, human != null, sysV, baseV);
 			String goldCell = human != null ? label(human) + "（人工）" : label(derived) + "（规则推算）";
 			sb.append("| ").append(np.id()).append(" | ").append(goldCell).append(" | ")
 				.append(mark(goldV, sysV)).append(" | ").append(baseV == null ? "—" : mark(goldV, baseV)).append(" |\n");
 		}
+		details.add(new CaseDetail(c.id(), c.split(), rows));
 		return sb.toString();
+	}
+
+	/** 逐求职者的结论与理由，写入 details JSON，供生成人工核对清单。 */
+	record DetailRow(String profile, Verdict derived, String derivedWhy, Verdict human, Verdict system,
+			String systemWhy, Verdict baseline, String baselineWhy) {
+	}
+
+	record CaseDetail(String id, String split, List<DetailRow> rows) {
+	}
+
+	/**
+	 * 用一句话说明规则为什么这样判：列出导致「不符合」「待核实」的条件及原因。
+	 * 「满足其一」的组如果已经满足，组内不满足的那几条不算理由。
+	 */
+	private String explain(List<Requirement> reqs, CandidateProfile p, LocalDate asOf) {
+		List<CheckResult> results = reqs.stream().map(r -> checker.check(r, p, asOf)).toList();
+		if (results.isEmpty()) {
+			return "没有条件";
+		}
+		Map<String, Boolean> groupPassed = new LinkedHashMap<>();
+		for (CheckResult r : results) {
+			if (r.alternativeGroup() != null) {
+				groupPassed.merge(r.alternativeGroup(), r.verdict() == Verdict.PASS, Boolean::logicalOr);
+			}
+		}
+		List<String> why = new ArrayList<>();
+		for (CheckResult r : results) {
+			boolean coveredByGroup = r.alternativeGroup() != null && groupPassed.get(r.alternativeGroup());
+			if (r.verdict() == Verdict.PASS || r.verdict() == Verdict.NOT_APPLICABLE || coveredByGroup) {
+				continue;
+			}
+			why.add(typeLabel(r.type()) + "：" + r.reason());
+		}
+		return why.isEmpty() ? "适用的条件都符合" : String.join("；", why);
+	}
+
+	private static String typeLabel(RequirementType type) {
+		return switch (type) {
+			case DEGREE -> "学历";
+			case MAJOR -> "专业";
+			case ENGLISH -> "英语";
+			case GRADUATION_WINDOW -> "毕业时间";
+			case AGE -> "年龄";
+			case OVERSEAS_CERT -> "留服认证";
+			case DEADLINE -> "截止日";
+			case OTHER -> "其他";
+		};
 	}
 
 	private Verdict overall(List<Requirement> reqs, CandidateProfile p, LocalDate asOf) {

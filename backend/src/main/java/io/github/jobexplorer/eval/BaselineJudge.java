@@ -31,7 +31,11 @@ final class BaselineJudge {
 	record Answer(String verdict, String reason) {
 	}
 
-	Verdict judge(String notice, CandidateProfile p, LocalDate today) {
+	/** 对照组的结论和它给出的理由。 */
+	record Judgement(Verdict verdict, String reason) {
+	}
+
+	Judgement judge(String notice, CandidateProfile p, LocalDate today) {
 		Answer a = ChatClient.create(model)
 			.prompt()
 			.system(SYSTEM_PROMPT)
@@ -39,13 +43,13 @@ final class BaselineJudge {
 			.call()
 			.entity(Answer.class);
 		if (a == null || a.verdict() == null) {
-			return Verdict.UNKNOWN;
+			return new Judgement(Verdict.UNKNOWN, "模型未给出结论");
 		}
 		try {
-			return Verdict.valueOf(a.verdict().trim().toUpperCase());
+			return new Judgement(Verdict.valueOf(a.verdict().trim().toUpperCase()), a.reason());
 		}
 		catch (IllegalArgumentException ex) {
-			return Verdict.UNKNOWN;
+			return new Judgement(Verdict.UNKNOWN, "无法识别的结论「" + a.verdict() + "」：" + a.reason());
 		}
 	}
 
