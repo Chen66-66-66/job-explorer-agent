@@ -44,7 +44,7 @@ public class Position {
 	private LocalDate viewedAt;
 
 	@Enumerated(EnumType.STRING)
-	@Column(nullable = false)
+	@Column(nullable = false, columnDefinition = "varchar(40)")
 	private PositionStatus status = PositionStatus.FOUND;
 
 	/** 最近一次完成条件核查（模型抽取成功或人工标记）的时间；为空表示尚未核查。 */

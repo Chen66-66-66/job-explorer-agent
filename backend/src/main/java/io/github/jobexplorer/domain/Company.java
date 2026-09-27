@@ -35,7 +35,7 @@ public class Company {
 	private String summary;
 
 	@Enumerated(EnumType.STRING)
-	@Column(nullable = false)
+	@Column(nullable = false, columnDefinition = "varchar(40)")
 	private CompanyStatus status = CompanyStatus.CANDIDATE;
 
 	private Instant createdAt = Instant.now();

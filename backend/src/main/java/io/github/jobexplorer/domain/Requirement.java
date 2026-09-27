@@ -37,12 +37,13 @@ public class Requirement {
 	@ManyToOne(fetch = FetchType.LAZY)
 	private Position position;
 
+	// 枚举按字符串存储且不在数据库层固定取值：Hibernate 默认会把当时的取值写进列类型，之后新增取值时旧库会拒绝写入
 	@Enumerated(EnumType.STRING)
-	@Column(nullable = false)
+	@Column(nullable = false, columnDefinition = "varchar(40)")
 	private RequirementType type;
 
 	@Enumerated(EnumType.STRING)
-	@Column(nullable = false)
+	@Column(nullable = false, columnDefinition = "varchar(40)")
 	private RequirementOrigin origin;
 
 	@Column(nullable = false, length = 1000)
