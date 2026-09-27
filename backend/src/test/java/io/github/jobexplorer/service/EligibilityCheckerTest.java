@@ -134,6 +134,50 @@ class EligibilityCheckerTest {
 	}
 
 	@Test
+	void 模型标注的适用对象未确认_不能当作不适用而跳过() {
+		// 模型可能把针对硕士的条件误标成「仅限本科生」，确认前不能让它悄悄帮助整体通过
+		Requirement r = llmReq(RequirementType.ENGLISH);
+		r.setLevel("CET-6");
+		r.setAppliesTo("本科生");
+		assertThat(verdict(r)).isEqualTo(Verdict.UNKNOWN);
+		r.setConfirmed(true);
+		assertThat(verdict(r)).isEqualTo(Verdict.NOT_APPLICABLE);
+	}
+
+	@Test
+	void 必须满足的条件适用性未知_阻止整体通过() {
+		Requirement degree = req(RequirementType.DEGREE);
+		degree.setLevel("本科");
+		Requirement unsure = llmReq(RequirementType.ENGLISH);
+		unsure.setLevel("CET-6");
+		unsure.setAppliesTo("本科生");
+		assertThat(overall(degree, unsure)).isEqualTo(Verdict.UNKNOWN);
+	}
+
+	@Test
+	void 满足其一时_已有确认适用且满足的路径_组可以通过() {
+		Requirement ielts = req(RequirementType.ENGLISH);
+		ielts.setLevel("PTE");
+		ielts.setMinScore(50.0);
+		ielts.setAlternativeGroup("g1");
+		Requirement unsure = llmReq(RequirementType.ENGLISH);
+		unsure.setLevel("CET-6");
+		unsure.setAppliesTo("本科生");
+		unsure.setAlternativeGroup("g1");
+		assertThat(overall(ielts, unsure)).isEqualTo(Verdict.PASS);
+	}
+
+	@Test
+	void 已确认的必需条件不满足_可直接判不符合_不必等其他条件() {
+		Requirement cet6 = req(RequirementType.ENGLISH);
+		cet6.setLevel("CET-6");
+		Requirement unsure = llmReq(RequirementType.AGE);
+		unsure.setMaxAge(30);
+		unsure.setAppliesTo("本科生");
+		assertThat(overall(cet6, unsure)).isEqualTo(Verdict.FAIL);
+	}
+
+	@Test
 	void 适用对象无法识别时_不据此排除() {
 		Requirement r = req(RequirementType.ENGLISH);
 		r.setLevel("CET-6");

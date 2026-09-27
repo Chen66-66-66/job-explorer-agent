@@ -37,6 +37,11 @@ public class EligibilityChecker {
 	public CheckResult check(Requirement r, CandidateProfile p, LocalDate today) {
 		Applicability applicability = applicability(r.getAppliesTo(), p);
 		if (applicability == Applicability.NO) {
+			// 适用对象本身也来自模型抽取：标错时这条要求会被悄悄跳过，所以确认前不能当作「不适用」
+			if (r.getOrigin() == RequirementOrigin.LLM && !r.isConfirmed()) {
+				return CheckResult.of(r, Verdict.UNKNOWN, "适用对象待确认：模型标注为仅限「" + r.getAppliesTo()
+						+ "」，据此不适用于你；如果标注有误，这条要求可能适用");
+			}
 			return CheckResult.of(r, Verdict.NOT_APPLICABLE, "适用对象为「" + r.getAppliesTo() + "」，与档案不符，不适用");
 		}
 		CheckResult raw = checkByType(r, p, today);
