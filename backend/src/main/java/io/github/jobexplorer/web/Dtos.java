@@ -10,10 +10,12 @@ import io.github.jobexplorer.domain.Enums.MaterialResolution;
 import io.github.jobexplorer.domain.Enums.PositionStatus;
 import io.github.jobexplorer.domain.Enums.RequirementOrigin;
 import io.github.jobexplorer.domain.Enums.RequirementType;
+import io.github.jobexplorer.domain.Enums.ReviewStatus;
 import io.github.jobexplorer.domain.Enums.Verdict;
 import io.github.jobexplorer.domain.Note;
 import io.github.jobexplorer.domain.Position;
 import io.github.jobexplorer.domain.Requirement;
+import io.github.jobexplorer.service.PositionReviewer.PositionReview;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -51,12 +53,14 @@ public final class Dtos {
 
 	public record PositionView(Long id, Long companyId, String companyName, String title, String unit,
 			String location, LocalDate deadline, String jdText, String sourceUrl, LocalDate viewedAt,
-			PositionStatus status, Instant checkedAt, Verdict verdict) {
+			PositionStatus status, Instant checkedAt, Verdict verdict, ReviewStatus reviewStatus, int todoCount,
+			MaterialResolution materialResolution, String materialNote) {
 
-		static PositionView of(Position p, Verdict verdict) {
+		static PositionView of(Position p, Verdict verdict, PositionReview review) {
 			return new PositionView(p.getId(), p.getCompany().getId(), p.getCompany().getName(), p.getTitle(),
 					p.getUnit(), p.getLocation(), p.getDeadline(), p.getJdText(), p.getSourceUrl(), p.getViewedAt(),
-					p.getStatus(), p.getCheckedAt(), verdict);
+					p.getStatus(), p.getCheckedAt(), verdict, review.status(), review.todos().size(),
+					p.getMaterialResolution(), p.getMaterialNote());
 		}
 	}
 

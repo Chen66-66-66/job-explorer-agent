@@ -176,6 +176,19 @@ label {
   font-size: 13px;
 }
 
+/* 操作出错时的提示固定在页面顶部：在页面下方点按钮出错，也能看到 */
+.error-banner {
+  position: sticky;
+  top: 8px;
+  z-index: 10;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: var(--fail);
+  background: var(--fail-bg);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
 .tag {
   display: inline-block;
   font-size: 12px;

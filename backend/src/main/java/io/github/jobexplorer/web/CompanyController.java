@@ -26,6 +26,7 @@ import io.github.jobexplorer.repository.RequirementRepository;
 import io.github.jobexplorer.service.AssessmentService;
 import io.github.jobexplorer.service.AssessmentService.Assessment;
 import io.github.jobexplorer.service.NotFoundException;
+import io.github.jobexplorer.service.ReviewService;
 import io.github.jobexplorer.web.Dtos.AnnouncementRequest;
 import io.github.jobexplorer.web.Dtos.AnnouncementView;
 import io.github.jobexplorer.web.Dtos.CompanyRequest;
@@ -55,15 +56,18 @@ public class CompanyController {
 
 	private final AssessmentService assessments;
 
+	private final ReviewService reviews;
+
 	public CompanyController(CompanyRepository companies, AnnouncementRepository announcements,
 			PositionRepository positions, RequirementRepository requirements, NoteRepository notes,
-			AssessmentService assessments) {
+			AssessmentService assessments, ReviewService reviews) {
 		this.companies = companies;
 		this.announcements = announcements;
 		this.positions = positions;
 		this.requirements = requirements;
 		this.notes = notes;
 		this.assessments = assessments;
+		this.reviews = reviews;
 	}
 
 	@GetMapping
@@ -129,7 +133,7 @@ public class CompanyController {
 	public List<PositionView> positions(@PathVariable Long id) {
 		return positions.findByCompanyIdOrderByCreatedAtAsc(id)
 			.stream()
-			.map(p -> PositionView.of(p, assessments.assessPosition(p.getId()).overall()))
+			.map(p -> PositionView.of(p, assessments.assessPosition(p.getId()).overall(), reviews.review(p.getId())))
 			.toList();
 	}
 
@@ -139,7 +143,7 @@ public class CompanyController {
 		Position p = new Position(find(id), req.title());
 		PositionController.apply(p, req);
 		positions.save(p);
-		return PositionView.of(p, assessments.assessPosition(p.getId()).overall());
+		return PositionView.of(p, assessments.assessPosition(p.getId()).overall(), reviews.review(p.getId()));
 	}
 
 	@GetMapping("/{id}/notes")

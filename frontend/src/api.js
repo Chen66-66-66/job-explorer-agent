@@ -32,11 +32,15 @@ export const api = {
   extractPosition: (id) => request('POST', `/positions/${id}/extract`),
   positionAssessment: (id) => request('GET', `/positions/${id}/assessment`),
   markPositionChecked: (id) => request('POST', `/positions/${id}/mark-checked`),
+  positionReview: (id) => request('GET', `/positions/${id}/review`),
+  resolveMaterial: (id, resolution, note) => request('POST', `/positions/${id}/material`, { resolution, note }),
+  preApplyCheck: (id) => request('POST', `/positions/${id}/pre-apply-check`),
 
   addRequirement: (body) => request('POST', '/requirements', body),
   deleteRequirement: (id) => request('DELETE', `/requirements/${id}`),
   confirmRequirement: (id, appliesToAllPositions) =>
     request('POST', `/requirements/${id}/confirm`, { appliesToAllPositions }),
+  judgeRequirement: (id, verdict, note) => request('POST', `/requirements/${id}/judgement`, { verdict, note }),
 
   askAgent: (question) => request('POST', '/agent/ask', { question }),
 
@@ -62,6 +66,35 @@ export const TYPE_LABEL = {
   OVERSEAS_CERT: '留服认证',
   DEADLINE: '截止日',
   OTHER: '其他',
+}
+
+// 岗位的主要状态：一个岗位同一时间只有一个
+export const REVIEW_STATUS_LABEL = {
+  TO_CHECK: '待核查',
+  PRELIM_MATCH: '初筛匹配',
+  PROPOSED_EXCLUSION: '拟排除·待确认',
+  EXCLUDED: '已排除',
+  VERIFIED: '已核实可报',
+}
+
+export const TODO_KIND_LABEL = {
+  MISSING_PROFILE: '档案缺信息',
+  MISSING_MATERIAL: '缺招聘材料',
+  MATERIAL_SCOPE: '材料范围',
+  NEEDS_JUDGEMENT: '需本人判定',
+  CONFIRM_EXCLUSION: '确认后会排除',
+}
+
+export const PENDING_LABEL = {
+  MISSING_PROFILE: '档案缺信息',
+  CONFIRM_EXTRACTION: '待确认抽取',
+  NEEDS_JUDGEMENT: '需本人判定',
+}
+
+export const MATERIAL_LABEL = {
+  PAGE_COMPLETE: '岗位页面即完整要求',
+  REFERENCED_NO_EXTRA: '引用材料已核对，没有额外条件',
+  REFERENCED_EXTRA_ADDED: '引用材料已核对，额外条件已补录',
 }
 
 export const ORIGIN_LABEL = { LLM: '模型抽取', MANUAL: '人工录入', DEMO: '演示数据' }

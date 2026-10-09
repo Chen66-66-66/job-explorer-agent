@@ -4,6 +4,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { api, POSITION_STATUS_LABEL, STATUS_LABEL } from '../api.js'
 import CheckList from '../components/CheckList.vue'
 import RequirementForm from '../components/RequirementForm.vue'
+import StatusBadge from '../components/StatusBadge.vue'
 import VerdictBadge from '../components/VerdictBadge.vue'
 
 const props = defineProps({ id: { type: String, required: true } })
@@ -85,6 +86,7 @@ const addNote = () =>
   })
 
 const confirm = (id, appliesAll) => run(() => api.confirmRequirement(id, appliesAll))
+const judge = (id, verdict, note) => run(() => api.judgeRequirement(id, verdict, note))
 const remove = (id) => {
   if (window.confirm('确定删除这条条件？重新抽取时模型可能再次抽出它。')) run(() => api.deleteRequirement(id))
 }
@@ -94,6 +96,7 @@ onMounted(load)
 
 <template>
   <main v-if="company" class="page">
+    <p v-if="error" class="error-banner">{{ error }}</p>
     <p class="muted"><router-link to="/">公司</router-link> / {{ company.name }}</p>
 
     <section class="card">
@@ -111,7 +114,6 @@ onMounted(load)
         {{ [company.groupName, company.platform && `招聘平台：${company.platform}`].filter(Boolean).join(' · ') }}
         <a v-if="company.careerSiteUrl" :href="company.careerSiteUrl" target="_blank" rel="noopener"> · 去招聘网站登录查看</a>
       </p>
-      <p v-if="error" class="error">{{ error }}</p>
     </section>
 
     <section class="card">
@@ -132,7 +134,7 @@ onMounted(load)
       <ul v-if="assessment.pending.length" class="pending">
         <li v-for="p in assessment.pending" :key="p">{{ p }}</li>
       </ul>
-      <CheckList :results="assessment.results" @confirm="confirm" @remove="remove" />
+      <CheckList :results="assessment.results" @confirm="confirm" @remove="remove" @judge="judge" />
     </section>
 
     <section class="card">
@@ -192,11 +194,12 @@ onMounted(load)
       <ul class="list">
         <li v-for="p in positions" :key="p.id" class="row spread">
           <div class="row">
-            <VerdictBadge :verdict="p.verdict" />
+            <StatusBadge :status="p.reviewStatus" />
             <router-link :to="`/positions/${p.id}`"><strong>{{ p.title }}</strong></router-link>
             <span class="muted">{{ [p.unit, p.location].filter(Boolean).join(' · ') }}</span>
           </div>
           <div class="row">
+            <span v-if="p.todoCount" class="muted">{{ p.todoCount }} 项待办</span>
             <span v-if="p.deadline" class="muted">截止 {{ p.deadline }}</span>
             <span class="tag">{{ POSITION_STATUS_LABEL[p.status] }}</span>
           </div>

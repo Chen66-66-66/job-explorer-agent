@@ -56,7 +56,7 @@ public class PositionController {
 
 	@GetMapping("/{id}")
 	public PositionView get(@PathVariable Long id) {
-		return PositionView.of(find(id), assessments.assessPosition(id).overall());
+		return PositionView.of(find(id), assessments.assessPosition(id).overall(), reviews.review(id));
 	}
 
 	@PatchMapping("/{id}")
@@ -68,7 +68,7 @@ public class PositionController {
 		if (jdChanged) {
 			requirementService.onJdChanged(p);
 		}
-		return PositionView.of(p, assessments.assessPosition(id).overall());
+		return PositionView.of(p, assessments.assessPosition(id).overall(), reviews.review(id));
 	}
 
 	@GetMapping("/{id}/requirements")

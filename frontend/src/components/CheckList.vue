@@ -1,21 +1,27 @@
 <script setup>
 // 逐条展示判断结果：结论、理由、原文引用、核对与确认状态。
-// 模型抽取的条件需要人工确认后才参与确定性判断。
+// 模型抽取的条件需要人工确认后才参与确定性判断；规则判断不了的口径问题，由本人判定并写明依据。
 import { reactive } from 'vue'
 import VerdictBadge from './VerdictBadge.vue'
-import { ORIGIN_LABEL, TYPE_LABEL } from '../api.js'
+import { ORIGIN_LABEL, PENDING_LABEL, TYPE_LABEL } from '../api.js'
 
 defineProps({ results: { type: Array, required: true } })
-const emit = defineEmits(['confirm', 'remove'])
+const emit = defineEmits(['confirm', 'remove', 'judge'])
 
 // 公司级条件确认时，是否同时确认「适用于本批次全部岗位」
 const appliesAll = reactive({})
+// 本人判定的依据，按条件分别填写
+const notes = reactive({})
+
+function judge(r, verdict) {
+  emit('judge', r.requirementId, verdict, notes[r.requirementId] || '')
+}
 </script>
 
 <template>
   <p v-if="!results.length" class="muted">还没有条件。可以让模型从原文抽取，或者手动录入。</p>
   <ul v-else class="list">
-    <li v-for="r in results" :key="r.requirementId">
+    <li v-for="r in results" :id="`req-${r.requirementId}`" :key="r.requirementId">
       <div class="row spread">
         <div class="row">
           <VerdictBadge :verdict="r.verdict" />
@@ -23,6 +29,8 @@ const appliesAll = reactive({})
           <span>{{ r.description }}</span>
         </div>
         <div class="row">
+          <span v-if="r.pending" class="tag pending-tag">{{ PENDING_LABEL[r.pending] }}</span>
+          <span v-if="r.judged" class="tag">本人判定</span>
           <span v-if="r.appliesTo" class="tag">仅限：{{ r.appliesTo }}</span>
           <span v-if="r.alternativeGroup" class="tag">满足其一：{{ r.alternativeGroup }}</span>
           <span class="tag">{{ r.companyLevel ? (r.appliesToAllPositions ? '公司级 · 适用全部岗位' : '公司级') : '岗位级' }}</span>
@@ -45,6 +53,12 @@ const appliesAll = reactive({})
           </label>
           <button @click="emit('confirm', r.requirementId, !!appliesAll[r.requirementId])">确认</button>
         </template>
+        <template v-else-if="r.pending === 'NEEDS_JUDGEMENT'">
+          <input v-model="notes[r.requirementId]" class="note" placeholder="判定依据，如「已电话确认电子信息属于相关专业」" />
+          <button @click="judge(r, 'PASS')">判定符合</button>
+          <button @click="judge(r, 'FAIL')">判定不符合</button>
+        </template>
+        <button v-if="r.judged" class="link" @click="emit('judge', r.requirementId, null, '')">撤销本人判定</button>
         <button class="link" @click="emit('remove', r.requirementId)">删除（抽错了）</button>
       </div>
     </li>
@@ -73,6 +87,16 @@ const appliesAll = reactive({})
 
 .inline input {
   width: auto;
+}
+
+.note {
+  flex: 1;
+  min-width: 220px;
+}
+
+.pending-tag {
+  color: var(--unknown);
+  border-color: var(--unknown);
 }
 
 .link {
