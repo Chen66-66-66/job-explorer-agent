@@ -2,9 +2,12 @@ package io.github.jobexplorer.web;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 import io.github.jobexplorer.domain.Announcement;
 import io.github.jobexplorer.domain.Company;
+import io.github.jobexplorer.domain.Enums.RejectionReason;
+import io.github.jobexplorer.domain.ExtractionRejection;
 import io.github.jobexplorer.domain.Enums.CompanyStatus;
 import io.github.jobexplorer.domain.Enums.MaterialResolution;
 import io.github.jobexplorer.domain.Enums.PositionStatus;
@@ -16,6 +19,8 @@ import io.github.jobexplorer.domain.Note;
 import io.github.jobexplorer.domain.Position;
 import io.github.jobexplorer.domain.Requirement;
 import io.github.jobexplorer.service.PositionReviewer.PositionReview;
+import io.github.jobexplorer.service.Rejections;
+import io.github.jobexplorer.service.RequirementService.ExtractionResult;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -96,6 +101,35 @@ public final class Dtos {
 
 	/** 本人对需人工判定条件的判定；verdict 为空表示撤销。 */
 	public record JudgementRequest(Verdict verdict, String note) {
+	}
+
+	/** 驳回一条模型抽取的条件；原因为「其他」时 note 必填。 */
+	public record RejectRequest(RejectionReason reason, String note) {
+	}
+
+	/**
+	 * 驳回记录。active 表示原文自驳回后没有改动：重新抽取时，完全相同的抽取会被跳过；
+	 * 原文改动后为 false，只作记录。
+	 */
+	public record RejectionView(Long id, RequirementType type, String description, String quote, String params,
+			RejectionReason reason, String note, Instant rejectedAt, boolean active, String source) {
+
+		static RejectionView of(ExtractionRejection r) {
+			String source = r.getPosition() != null ? "岗位「" + r.getPosition().getTitle() + "」JD"
+					: r.getAnnouncement() != null ? "公告「" + r.getAnnouncement().getTitle() + "」" : "未知出处";
+			return new RejectionView(r.getId(), r.getType(), r.getDescription(), r.getQuote(), r.getParams(),
+					r.getReason(), r.getNote(), r.getRejectedAt(),
+					r.getSourceHash().equals(Rejections.sourceHash(r.sourceText())), source);
+		}
+	}
+
+	/** 一次抽取的结果：保存的条件，以及因此前驳回过而跳过的条目。 */
+	public record ExtractionView(List<RequirementView> requirements, List<RejectionView> skipped) {
+
+		static ExtractionView of(ExtractionResult result) {
+			return new ExtractionView(result.saved().stream().map(RequirementView::of).toList(),
+					result.skipped().stream().map(RejectionView::of).toList());
+		}
 	}
 
 	/** 本人确认岗位的材料范围；resolution 为空表示撤销。 */

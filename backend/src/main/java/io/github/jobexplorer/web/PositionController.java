@@ -24,6 +24,7 @@ import io.github.jobexplorer.service.NotFoundException;
 import io.github.jobexplorer.service.PositionReviewer.PositionReview;
 import io.github.jobexplorer.service.RequirementService;
 import io.github.jobexplorer.service.ReviewService;
+import io.github.jobexplorer.web.Dtos.ExtractionView;
 import io.github.jobexplorer.web.Dtos.MaterialRequest;
 import io.github.jobexplorer.web.Dtos.PositionRequest;
 import io.github.jobexplorer.web.Dtos.PositionView;
@@ -77,8 +78,8 @@ public class PositionController {
 	}
 
 	@PostMapping("/{id}/extract")
-	public List<RequirementView> extract(@PathVariable Long id) {
-		return requirementService.extractFromPosition(id).stream().map(RequirementView::of).toList();
+	public ExtractionView extract(@PathVariable Long id) {
+		return ExtractionView.of(requirementService.extractFromPosition(id));
 	}
 
 	@PostMapping("/{id}/mark-checked")

@@ -14,6 +14,8 @@ public interface RequirementRepository extends JpaRepository<Requirement, Long> 
 
 	List<Requirement> findByPositionIdOrderByIdAsc(Long positionId);
 
+	List<Requirement> findByAnnouncementIdAndPositionIsNullOrderByIdAsc(Long announcementId);
+
 	void deleteByAnnouncementIdAndPositionIsNullAndOrigin(Long announcementId, RequirementOrigin origin);
 
 	void deleteByPositionIdAndOrigin(Long positionId, RequirementOrigin origin);

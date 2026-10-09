@@ -15,17 +15,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.jobexplorer.domain.Announcement;
+import io.github.jobexplorer.domain.ExtractionRejection;
 import io.github.jobexplorer.domain.Company;
+import io.github.jobexplorer.domain.Enums.RejectionReason;
 import io.github.jobexplorer.domain.Enums.RequirementOrigin;
 import io.github.jobexplorer.domain.Enums.RequirementType;
 import io.github.jobexplorer.domain.Enums.Verdict;
 import io.github.jobexplorer.domain.Position;
 import io.github.jobexplorer.domain.Requirement;
 import io.github.jobexplorer.repository.AnnouncementRepository;
+import io.github.jobexplorer.repository.ExtractionRejectionRepository;
 import io.github.jobexplorer.repository.PositionRepository;
 import io.github.jobexplorer.repository.RequirementRepository;
 
-/** 条件的抽取、录入、核对与确认。 */
+/** 条件的抽取、录入、核对、确认与驳回。 */
 @Service
 @Transactional
 public class RequirementService {
@@ -42,50 +45,75 @@ public class RequirementService {
 
 	private final PositionRepository positions;
 
+	private final ExtractionRejectionRepository rejections;
+
 	public RequirementService(LlmRequirementExtractor extractor, QuoteVerifier quoteVerifier,
-			RequirementRepository requirements, AnnouncementRepository announcements, PositionRepository positions) {
+			RequirementRepository requirements, AnnouncementRepository announcements, PositionRepository positions,
+			ExtractionRejectionRepository rejections) {
 		this.extractor = extractor;
 		this.quoteVerifier = quoteVerifier;
 		this.requirements = requirements;
 		this.announcements = announcements;
 		this.positions = positions;
+		this.rejections = rejections;
+	}
+
+	/** 一次抽取的结果：保存的条件，以及因与此前驳回的抽取完全相同而跳过的条目。 */
+	public record ExtractionResult(List<Requirement> saved, List<ExtractionRejection> skipped) {
 	}
 
 	/**
 	 * 从公告抽取公司级条件。模型调用成功后才替换之前由模型抽取的条件；人工录入的保留。
-	 * 抽取出的条件都处于「待确认」状态。
+	 * 抽取出的条件都处于「待确认」状态；与此前在同一原文上驳回过的抽取完全相同的，不再保存。
 	 */
-	public List<Requirement> extractFromAnnouncement(Long announcementId) {
+	public ExtractionResult extractFromAnnouncement(Long announcementId) {
 		Announcement ann = announcements.findById(announcementId)
 			.orElseThrow(() -> new NotFoundException("公告", announcementId));
 		List<ExtractedRequirement> extracted = extractor.extract(ann.getContent());
 		requirements.deleteByAnnouncementIdAndPositionIsNullAndOrigin(announcementId, RequirementOrigin.LLM);
+		Rejections.Filter filter = new Rejections.Filter(
+				rejections.findByAnnouncementIdAndPositionIsNullOrderByRejectedAtDesc(announcementId), ann.getContent());
 		List<Requirement> saved = new ArrayList<>();
+		List<ExtractionRejection> skipped = new ArrayList<>();
 		for (ExtractedRequirement e : extracted) {
 			Requirement r = fromExtracted(ann.getCompany(), e);
 			r.setAnnouncement(ann);
-			saved.add(verifyAndSave(r));
+			saveUnlessRejected(r, filter, saved, skipped);
 		}
 		ann.setCheckedAt(Instant.now());
-		return saved;
+		return new ExtractionResult(saved, skipped);
 	}
 
 	/** 从岗位 JD 抽取岗位级条件。 */
-	public List<Requirement> extractFromPosition(Long positionId) {
+	public ExtractionResult extractFromPosition(Long positionId) {
 		Position pos = positions.findById(positionId).orElseThrow(() -> new NotFoundException("岗位", positionId));
 		if (pos.getJdText() == null || pos.getJdText().isBlank()) {
 			throw new IllegalArgumentException("岗位还没有录入 JD 原文");
 		}
 		List<ExtractedRequirement> extracted = extractor.extract(pos.getJdText());
 		requirements.deleteByPositionIdAndOrigin(positionId, RequirementOrigin.LLM);
+		Rejections.Filter filter = new Rejections.Filter(rejections.findByPositionIdOrderByRejectedAtDesc(positionId),
+				pos.getJdText());
 		List<Requirement> saved = new ArrayList<>();
+		List<ExtractionRejection> skipped = new ArrayList<>();
 		for (ExtractedRequirement e : extracted) {
 			Requirement r = fromExtracted(pos.getCompany(), e);
 			r.setPosition(pos);
-			saved.add(verifyAndSave(r));
+			saveUnlessRejected(r, filter, saved, skipped);
 		}
 		pos.setCheckedAt(Instant.now());
-		return saved;
+		return new ExtractionResult(saved, skipped);
+	}
+
+	private void saveUnlessRejected(Requirement r, Rejections.Filter filter, List<Requirement> saved,
+			List<ExtractionRejection> skipped) {
+		ExtractionRejection rejected = filter.match(r);
+		if (rejected != null) {
+			skipped.add(rejected);
+		}
+		else {
+			saved.add(verifyAndSave(r));
+		}
 	}
 
 	/** 保存一条条件：核对原文引用，并检查解析出的数值是否出现在引用里。人工录入也不例外。 */
@@ -156,8 +184,66 @@ public class RequirementService {
 		}
 	}
 
+	/** 删除人工录入或演示数据的条件。模型抽取的条件要用「驳回」并说明原因。 */
 	public void delete(Long requirementId) {
-		requirements.deleteById(requirementId);
+		Requirement r = requirements.findById(requirementId)
+			.orElseThrow(() -> new NotFoundException("条件", requirementId));
+		if (r.getOrigin() == RequirementOrigin.LLM) {
+			throw new IllegalArgumentException("模型抽取的条件请用「驳回」，并选择抽错的原因");
+		}
+		requirements.delete(r);
+	}
+
+	/**
+	 * 驳回一条模型抽取的条件：留下记录（抽取结果、原因、当时的原文指纹）后删除条件。
+	 * 同一原文重新抽取时，完全相同的抽取不再出现；原文改动后，这条记录不再生效。
+	 */
+	public ExtractionRejection reject(Long requirementId, RejectionReason reason, String note) {
+		Requirement r = requirements.findById(requirementId)
+			.orElseThrow(() -> new NotFoundException("条件", requirementId));
+		if (r.getOrigin() != RequirementOrigin.LLM) {
+			throw new IllegalArgumentException("只有模型抽取的条件需要驳回；人工录入的直接删除即可");
+		}
+		if (reason == null) {
+			throw new IllegalArgumentException("请选择驳回原因");
+		}
+		String trimmed = note == null || note.isBlank() ? null : note.trim();
+		if (reason == RejectionReason.OTHER && trimmed == null) {
+			throw new IllegalArgumentException("选择「其他」时请写明原因");
+		}
+		ExtractionRejection rejection = rejections.save(new ExtractionRejection(r, reason, trimmed, Rejections.params(r),
+				Rejections.snapshot(r), Rejections.fingerprint(r), Rejections.sourceHash(r.sourceText())));
+		requirements.delete(r);
+		return rejection;
+	}
+
+	/**
+	 * 撤销驳回：按快照恢复为待确认的模型抽取条件，并删除驳回记录。
+	 * 如果同一出处已有完全相同的抽取（例如原文改动后重新抽取过），不重复创建，返回已有的那条。
+	 */
+	public Requirement restore(Long rejectionId) {
+		ExtractionRejection rejection = rejections.findById(rejectionId)
+			.orElseThrow(() -> new NotFoundException("驳回记录", rejectionId));
+		Rejections.Snapshot snapshot = Rejections.readSnapshot(rejection.getSnapshot());
+		Requirement r = fromExtracted(rejection.getCompany(), snapshot.extracted());
+		r.setAnnouncement(rejection.getAnnouncement());
+		r.setPosition(rejection.getPosition());
+		if (snapshot.parseIssue() != null) {
+			r.setParseIssue(join(r.getParseIssue(), snapshot.parseIssue()));
+		}
+		rejections.delete(rejection);
+		String fingerprint = Rejections.fingerprint(r);
+		List<Requirement> sameSource = r.getPosition() != null
+				? requirements.findByPositionIdOrderByIdAsc(r.getPosition().getId())
+				: r.getAnnouncement() != null
+						? requirements.findByAnnouncementIdAndPositionIsNullOrderByIdAsc(r.getAnnouncement().getId())
+						: List.of();
+		for (Requirement existing : sameSource) {
+			if (existing.getOrigin() == RequirementOrigin.LLM && Rejections.fingerprint(existing).equals(fingerprint)) {
+				return existing;
+			}
+		}
+		return verifyAndSave(r);
 	}
 
 	/** 对照原文做程序核对（不保存）：引用是否在原文中、数值是否在引用中。测评程序也用它。 */
@@ -272,6 +358,9 @@ public class RequirementService {
 	}
 
 	private static String join(String a, String b) {
-		return a == null ? b : Objects.equals(a, b) || a.contains(b) ? a : a + "；" + b;
+		if (b == null) {
+			return a;
+		}
+		return a == null ? b : Objects.equals(a, b) || a.contains(b) ? a : b.contains(a) ? b : a + "；" + b;
 	}
 }

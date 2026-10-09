@@ -72,4 +72,14 @@ public final class Enums {
 	public enum Verdict {
 		PASS, FAIL, UNKNOWN, PARTIAL, NOT_APPLICABLE
 	}
+
+	/**
+	 * 驳回模型抽取结果的原因：
+	 * NOT_IN_SOURCE 原文没有这个要求；NOT_A_REQUIREMENT 不是报名硬性条件（如优先条件、岗位职责）；
+	 * WRONG_VALUE 数值或参数读错；WRONG_TYPE 条件类型错；WRONG_SCOPE 适用对象或「满足其一」分组错；
+	 * DUPLICATE 与另一条重复；OTHER 其他（须写说明）。
+	 */
+	public enum RejectionReason {
+		NOT_IN_SOURCE, NOT_A_REQUIREMENT, WRONG_VALUE, WRONG_TYPE, WRONG_SCOPE, DUPLICATE, OTHER
+	}
 }
