@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import io.github.jobexplorer.config.CandidateProfile;
 import io.github.jobexplorer.config.CandidateProfile.EnglishCert;
+import io.github.jobexplorer.domain.Enums.PendingKind;
 import io.github.jobexplorer.domain.Enums.RequirementOrigin;
 import io.github.jobexplorer.domain.Enums.Verdict;
 import io.github.jobexplorer.domain.Requirement;
@@ -39,8 +40,9 @@ public class EligibilityChecker {
 		if (applicability == Applicability.NO) {
 			// 适用对象本身也来自模型抽取：标错时这条要求会被悄悄跳过，所以确认前不能当作「不适用」
 			if (r.getOrigin() == RequirementOrigin.LLM && !r.isConfirmed()) {
-				return CheckResult.of(r, Verdict.UNKNOWN, "适用对象待确认：模型标注为仅限「" + r.getAppliesTo()
-						+ "」，据此不适用于你；如果标注有误，这条要求可能适用");
+				return CheckResult.of(r, Verdict.NOT_APPLICABLE, "")
+					.downgrade(PendingKind.CONFIRM_EXTRACTION, "适用对象待确认：模型标注为仅限「" + r.getAppliesTo()
+							+ "」，据此不适用于你；如果标注有误，这条要求可能适用");
 			}
 			return CheckResult.of(r, Verdict.NOT_APPLICABLE, "适用对象为「" + r.getAppliesTo() + "」，与档案不符，不适用");
 		}
@@ -48,25 +50,25 @@ public class EligibilityChecker {
 		if (raw.verdict() == Verdict.UNKNOWN) {
 			// 规则本身已判待核实，也要把出处问题说出来，避免把找不到的引用当成原文
 			return r.getOrigin() == RequirementOrigin.LLM && !r.isQuoteVerified()
-					? raw.withVerdict(Verdict.UNKNOWN, "原文出处未能核对；" + raw.reason())
+					? raw.withReason("原文出处未能核对；" + raw.reason())
 					: raw;
 		}
 		String computed = "规则计算为「" + label(raw.verdict()) + "」（" + raw.reason() + "）";
 		if (r.getOrigin() == RequirementOrigin.LLM && !r.isQuoteVerified()) {
-			return raw.withVerdict(Verdict.UNKNOWN, "原文出处未能核对，暂不采信；" + computed);
+			return raw.downgrade(PendingKind.CONFIRM_EXTRACTION, "原文出处未能核对，暂不采信；" + computed);
 		}
 		// 解析问题需要人看过：人工确认后以人工为准，问题提示仍会显示
 		if (r.getParseIssue() != null && !r.isConfirmed()) {
-			return raw.withVerdict(Verdict.UNKNOWN, "解析有问题：" + r.getParseIssue() + "；" + computed);
+			return raw.downgrade(PendingKind.CONFIRM_EXTRACTION, "解析有问题：" + r.getParseIssue() + "；" + computed);
 		}
 		if (!r.isConfirmed()) {
-			return raw.withVerdict(Verdict.UNKNOWN, "解析结果待人工确认；" + computed);
+			return raw.downgrade(PendingKind.CONFIRM_EXTRACTION, "解析结果待人工确认；" + computed);
 		}
 		if (applicability == Applicability.UNSURE) {
-			return raw.withVerdict(Verdict.UNKNOWN, "适用对象「" + r.getAppliesTo() + "」无法自动判断是否包括本人；" + computed);
+			return raw.downgrade(PendingKind.NEEDS_JUDGEMENT, "适用对象「" + r.getAppliesTo() + "」无法自动判断是否包括本人；" + computed);
 		}
 		if (raw.verdict() == Verdict.FAIL && r.isCompanyLevel() && !r.isAppliesToAllPositions()) {
-			return raw.withVerdict(Verdict.UNKNOWN, "尚未确认该条件适用于本批次全部岗位，不据此排除；" + computed);
+			return raw.downgrade(PendingKind.CONFIRM_EXTRACTION, "尚未确认该条件适用于本批次全部岗位，不据此排除；" + computed);
 		}
 		return raw;
 	}
@@ -111,7 +113,7 @@ public class EligibilityChecker {
 			case AGE -> checkAge(r, p, today);
 			case OVERSEAS_CERT -> checkOverseasCert(r, p);
 			case DEADLINE -> checkDeadline(r, today);
-			case OTHER -> CheckResult.of(r, Verdict.UNKNOWN, "非结构化条件，需人工判断");
+			case OTHER -> CheckResult.unknown(r, PendingKind.NEEDS_JUDGEMENT, "非结构化条件，需人工判断");
 		};
 	}
 
@@ -119,7 +121,8 @@ public class EligibilityChecker {
 		Integer required = DEGREE_RANK.get(r.getLevel());
 		Integer actual = DEGREE_RANK.get(p.degree());
 		if (required == null || actual == null) {
-			return CheckResult.of(r, Verdict.UNKNOWN, "学历要求或档案学历无法识别");
+			return p.degree() == null ? CheckResult.unknown(r, PendingKind.MISSING_PROFILE, "档案未填写学历")
+					: CheckResult.unknown(r, PendingKind.NEEDS_JUDGEMENT, "学历要求无法识别");
 		}
 		return actual >= required
 				? CheckResult.of(r, Verdict.PASS, "档案学历为" + p.degree() + "，满足" + r.getLevel() + "及以上")
@@ -129,7 +132,10 @@ public class EligibilityChecker {
 	private CheckResult checkMajor(Requirement r, CandidateProfile p) {
 		List<String> required = splitList(r.getListValues());
 		if (required.isEmpty()) {
-			return CheckResult.of(r, Verdict.UNKNOWN, "专业名单为空");
+			return CheckResult.unknown(r, PendingKind.NEEDS_JUDGEMENT, "专业名单为空");
+		}
+		if (p.majors().isEmpty()) {
+			return CheckResult.unknown(r, PendingKind.MISSING_PROFILE, "档案未填写专业");
 		}
 		for (String mine : p.majors()) {
 			if (required.contains(mine.trim())) {
@@ -139,17 +145,17 @@ public class EligibilityChecker {
 		for (String mine : p.majors()) {
 			for (String want : required) {
 				if (mine.contains(want) || want.contains(mine)) {
-					return CheckResult.of(r, Verdict.UNKNOWN, "档案专业「" + mine + "」与名单中的「" + want + "」相近但不完全一致，需人工确认");
+					return CheckResult.unknown(r, PendingKind.NEEDS_JUDGEMENT, "档案专业「" + mine + "」与名单中的「" + want + "」相近但不完全一致，需人工确认");
 				}
 			}
 		}
 		// 名单常写「计算机类」「等相关专业」，不直接判不符合
-		return CheckResult.of(r, Verdict.UNKNOWN, "档案专业未出现在名单中，名单可能有类别或近似表述，需人工确认");
+		return CheckResult.unknown(r, PendingKind.NEEDS_JUDGEMENT, "档案专业未出现在名单中，名单可能有类别或近似表述，需人工确认");
 	}
 
 	private CheckResult checkEnglish(Requirement r, CandidateProfile p) {
 		if (r.getLevel() == null) {
-			return CheckResult.of(r, Verdict.UNKNOWN, "未识别出具体英语证书要求");
+			return CheckResult.unknown(r, PendingKind.NEEDS_JUDGEMENT, "没有具体证书或分数线的英语要求，需本人判断");
 		}
 		String want = normalizeCert(r.getLevel());
 		Optional<EnglishCert> same = p.english().stream().filter(c -> normalizeCert(c.type()).equals(want)).findFirst();
@@ -158,7 +164,7 @@ public class EligibilityChecker {
 		}
 		// 不自行推断「六级可以替代四级」等换算，交给人按公告确认
 		if (!p.english().isEmpty() && (r.isAllowEquivalent() || want.equals("CET-4"))) {
-			return CheckResult.of(r, Verdict.UNKNOWN, "档案中没有 " + r.getLevel() + "，但有其他英语证书，是否认可需按公告确认");
+			return CheckResult.unknown(r, PendingKind.NEEDS_JUDGEMENT, "档案中没有 " + r.getLevel() + "，但有其他英语证书，是否认可需按公告确认");
 		}
 		return CheckResult.of(r, Verdict.FAIL, "档案中没有 " + r.getLevel() + " 证书");
 	}
@@ -169,7 +175,7 @@ public class EligibilityChecker {
 		if (r.getMinScore() == null && cet) {
 			// 「通过四 / 六级」按全国大学英语考试 425 分通过线理解；只有成绩单、没过线不算通过
 			if (cert.score() == null) {
-				return CheckResult.of(r, Verdict.UNKNOWN, "要求通过 " + type + "，档案未记录分数，无法判断是否过 425 分线");
+				return CheckResult.unknown(r, PendingKind.MISSING_PROFILE, "要求通过 " + type + "，档案未记录分数，无法判断是否过 425 分线");
 			}
 			return cert.score() >= CET_PASS_LINE
 					? CheckResult.of(r, Verdict.PASS, type + " " + fmt(cert.score()) + " 分，达到 425 分通过线")
@@ -179,7 +185,7 @@ public class EligibilityChecker {
 			return CheckResult.of(r, Verdict.PASS, "持有 " + cert.type());
 		}
 		if (cert.score() == null) {
-			return CheckResult.of(r, Verdict.UNKNOWN, "要求 " + fmt(r.getMinScore()) + " 分，档案未记录分数");
+			return CheckResult.unknown(r, PendingKind.MISSING_PROFILE, "要求 " + fmt(r.getMinScore()) + " 分，档案未记录分数");
 		}
 		return cert.score() >= r.getMinScore()
 				? CheckResult.of(r, Verdict.PASS, cert.type() + " " + fmt(cert.score()) + " 分，达到 " + fmt(r.getMinScore()))
@@ -187,8 +193,11 @@ public class EligibilityChecker {
 	}
 
 	private CheckResult checkGraduationWindow(Requirement r, CandidateProfile p) {
-		if (p.graduationDate() == null || (r.getMinDate() == null && r.getMaxDate() == null)) {
-			return CheckResult.of(r, Verdict.UNKNOWN, "缺少毕业时间或窗口日期");
+		if (r.getMinDate() == null && r.getMaxDate() == null) {
+			return CheckResult.unknown(r, PendingKind.NEEDS_JUDGEMENT, "毕业时间窗口没有日期");
+		}
+		if (p.graduationDate() == null) {
+			return CheckResult.unknown(r, PendingKind.MISSING_PROFILE, "档案未填写毕业时间");
 		}
 		LocalDate g = p.graduationDate();
 		if (r.getMinDate() != null && g.isBefore(r.getMinDate())) {
@@ -211,37 +220,40 @@ public class EligibilityChecker {
 	private CheckResult checkCohort(Requirement r, CandidateProfile p) {
 		List<String> years = splitList(r.getListValues()).stream().map(y -> y.replace("届", "").trim()).toList();
 		if (years.isEmpty()) {
-			return CheckResult.of(r, Verdict.UNKNOWN, "缺少届别要求");
+			return CheckResult.unknown(r, PendingKind.NEEDS_JUDGEMENT, "缺少届别要求");
 		}
 		String wanted = String.join("、", years);
 		if (p.cohort() != null) {
 			String declared = String.valueOf(p.cohort());
 			return years.contains(declared)
 					? CheckResult.of(r, Verdict.PASS, "按本人在档案中申报的 " + declared + " 届，与要求一致")
-					: CheckResult.of(r, Verdict.UNKNOWN, "本人申报为 " + declared + " 届，要求 " + wanted
+					: CheckResult.unknown(r, PendingKind.NEEDS_JUDGEMENT, "本人申报为 " + declared + " 届，要求 " + wanted
 							+ " 届；部分单位接受往届或另有口径，需按公告确认");
 		}
 		if (p.graduationDate() == null) {
-			return CheckResult.of(r, Verdict.UNKNOWN, "档案未申报届别，也没有毕业时间");
+			return CheckResult.unknown(r, PendingKind.MISSING_PROFILE, "档案未申报届别，也没有毕业时间");
 		}
 		String gradYear = String.valueOf(p.graduationDate().getYear());
 		return years.contains(gradYear)
-				? CheckResult.of(r, Verdict.UNKNOWN, "毕业年份 " + gradYear + " 与要求的 " + wanted
+				? CheckResult.unknown(r, PendingKind.MISSING_PROFILE, "毕业年份 " + gradYear + " 与要求的 " + wanted
 						+ " 届一致，但届别由招聘单位认定，档案未申报届别，届别资格待核实")
-				: CheckResult.of(r, Verdict.UNKNOWN, "毕业年份 " + gradYear + " 与要求的 " + wanted
+				: CheckResult.unknown(r, PendingKind.NEEDS_JUDGEMENT, "毕业年份 " + gradYear + " 与要求的 " + wanted
 						+ " 届不一致；届别口径各家不同（尤其境外院校），需按公告确认");
 	}
 
 	private CheckResult checkAge(Requirement r, CandidateProfile p, LocalDate today) {
-		if (r.getMaxAge() == null || p.birthDate() == null) {
-			return CheckResult.of(r, Verdict.UNKNOWN, "缺少年龄上限或出生日期");
+		if (r.getMaxAge() == null) {
+			return CheckResult.unknown(r, PendingKind.NEEDS_JUDGEMENT, "未识别出年龄上限");
+		}
+		if (p.birthDate() == null) {
+			return CheckResult.unknown(r, PendingKind.MISSING_PROFILE, "档案未填写出生日期");
 		}
 		// 「不超过 N 周岁」到 N+1 岁生日前都符合；「未满 N 周岁」则必须在 N 岁生日前
 		int limit = r.isAgeStrict() ? r.getMaxAge() - 1 : r.getMaxAge();
 		String rule = (r.isAgeStrict() ? "未满 " : "不超过 ") + r.getMaxAge() + " 周岁";
 		if (r.getAgeReferenceDate() == null) {
 			int now = Period.between(p.birthDate(), today).getYears();
-			return CheckResult.of(r, Verdict.UNKNOWN, "要求" + rule + "，但公告未写年龄计算截止日（目前 " + now + " 周岁），需确认");
+			return CheckResult.unknown(r, PendingKind.NEEDS_JUDGEMENT, "要求" + rule + "，但公告未写年龄计算截止日（目前 " + now + " 周岁），需确认");
 		}
 		int age = Period.between(p.birthDate(), r.getAgeReferenceDate()).getYears();
 		String at = "截至 " + r.getAgeReferenceDate() + " 为 " + age + " 周岁";
@@ -257,12 +269,12 @@ public class EligibilityChecker {
 		if (p.overseasCertPlanned()) {
 			return CheckResult.of(r, Verdict.PASS, "档案注明将按要求办理留服认证；请留意公告要求的办理时限");
 		}
-		return CheckResult.of(r, Verdict.UNKNOWN, "境外学历需按要求取得留服认证，请确认能否在规定时间前办好");
+		return CheckResult.unknown(r, PendingKind.MISSING_PROFILE, "境外学历需按要求取得留服认证，档案未注明是否计划办理");
 	}
 
 	private CheckResult checkDeadline(Requirement r, LocalDate today) {
 		if (r.getMaxDate() == null) {
-			return CheckResult.of(r, Verdict.UNKNOWN, "未识别出截止日期");
+			return CheckResult.unknown(r, PendingKind.NEEDS_JUDGEMENT, "未识别出截止日期");
 		}
 		long days = ChronoUnit.DAYS.between(today, r.getMaxDate());
 		return days >= 0

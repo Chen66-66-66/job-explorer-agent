@@ -27,6 +27,16 @@ public final class Enums {
 	}
 
 	/**
+	 * 一条条件为什么是「待核实」，决定下一步该谁做什么：
+	 * MISSING_PROFILE 档案缺信息，本人补一次就能自动判断；
+	 * CONFIRM_EXTRACTION 模型抽取的条件（或其适用范围）还没人工确认；
+	 * NEEDS_JUDGEMENT 口径问题，程序判断不了，需要本人拍板（如专业是否相关）。
+	 */
+	public enum PendingKind {
+		MISSING_PROFILE, CONFIRM_EXTRACTION, NEEDS_JUDGEMENT
+	}
+
+	/**
 	 * 判断结论。
 	 * PARTIAL 只用于整体：已核查的条件都通过，但还有来源没核查完，不能说「符合」。
 	 * NOT_APPLICABLE 只用于单条：条件的适用对象不是本人（如只针对本科生的年龄要求）。

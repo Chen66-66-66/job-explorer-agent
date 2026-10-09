@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import io.github.jobexplorer.config.CandidateProfile;
 import io.github.jobexplorer.config.CandidateProfile.EnglishCert;
 import io.github.jobexplorer.domain.Company;
+import io.github.jobexplorer.domain.Enums.PendingKind;
 import io.github.jobexplorer.domain.Enums.RequirementOrigin;
 import io.github.jobexplorer.domain.Enums.RequirementType;
 import io.github.jobexplorer.domain.Enums.Verdict;
@@ -393,5 +394,58 @@ class EligibilityCheckerTest {
 		List<CheckResult> results = List.of(checker.check(ok, profile, today));
 		assertThat(VerdictAggregator.overall(results, true)).isEqualTo(Verdict.PASS);
 		assertThat(VerdictAggregator.overall(results, false)).isEqualTo(Verdict.PARTIAL);
+	}
+	// ---------- 待核实的原因与规则原始结论 ----------
+
+	@Test
+	void 未确认的条件_保留规则原始结论_原因是待确认抽取() {
+		Requirement r = llmReq(RequirementType.ENGLISH);
+		r.setLevel("CET-6");
+		CheckResult result = checker.check(r, profile, today);
+		assertThat(result.verdict()).isEqualTo(Verdict.UNKNOWN);
+		assertThat(result.ruleVerdict()).as("确认后会被排除").isEqualTo(Verdict.FAIL);
+		assertThat(result.pending()).isEqualTo(PendingKind.CONFIRM_EXTRACTION);
+	}
+
+	@Test
+	void 适用对象未确认_原始结论是不适用_原因是待确认抽取() {
+		Requirement r = llmReq(RequirementType.AGE);
+		r.setMaxAge(25);
+		r.setAppliesTo("本科生");
+		CheckResult result = checker.check(r, profile, today);
+		assertThat(result.ruleVerdict()).isEqualTo(Verdict.NOT_APPLICABLE);
+		assertThat(result.pending()).isEqualTo(PendingKind.CONFIRM_EXTRACTION);
+	}
+
+	@Test
+	void 档案缺信息_原因是缺个人信息() {
+		CandidateProfile noScore = new CandidateProfile("测试", "硕士", List.of(), null, null, false, false,
+				List.of(new EnglishCert("CET-6", null)), null);
+		Requirement english = req(RequirementType.ENGLISH);
+		english.setLevel("CET-6");
+		assertThat(checker.check(english, noScore, today).pending()).isEqualTo(PendingKind.MISSING_PROFILE);
+		Requirement age = req(RequirementType.AGE);
+		age.setMaxAge(30);
+		age.setAgeReferenceDate(LocalDate.of(2027, 7, 31));
+		assertThat(checker.check(age, noScore, today).pending()).as("没有出生日期").isEqualTo(PendingKind.MISSING_PROFILE);
+	}
+
+	@Test
+	void 口径问题_原因是需人工判定() {
+		Requirement major = req(RequirementType.MAJOR);
+		major.setListValues("计算机类");
+		assertThat(checker.check(major, profile, today).pending()).isEqualTo(PendingKind.NEEDS_JUDGEMENT);
+		Requirement other = req(RequirementType.OTHER);
+		assertThat(checker.check(other, profile, today).pending()).isEqualTo(PendingKind.NEEDS_JUDGEMENT);
+	}
+
+	@Test
+	void 确定结论没有待核实原因() {
+		Requirement r = req(RequirementType.DEGREE);
+		r.setLevel("本科");
+		CheckResult result = checker.check(r, profile, today);
+		assertThat(result.verdict()).isEqualTo(Verdict.PASS);
+		assertThat(result.ruleVerdict()).isEqualTo(Verdict.PASS);
+		assertThat(result.pending()).isNull();
 	}
 }
