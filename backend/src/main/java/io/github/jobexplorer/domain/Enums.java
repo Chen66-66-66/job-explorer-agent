@@ -37,6 +37,34 @@ public final class Enums {
 	}
 
 	/**
+	 * 岗位的主要状态（一个岗位同一时间只有一个）：
+	 * TO_CHECK 待核查：缺个人信息、缺招聘材料或材料范围未查清，还没有足够依据；
+	 * PRELIM_MATCH 初筛匹配：材料范围已明确，已知硬条件没有不符合，可能还有需要本人拍板的口径问题；
+	 * PROPOSED_EXCLUSION 拟排除·待确认：有条件按规则会导致不符合，但抽取还没人工确认，不提前隐藏；
+	 * EXCLUDED 已排除：已确认的硬条件不符合；
+	 * VERIFIED 已核实可报：所有适用条件都已确认满足、没有待办，并完成了投递前核对。
+	 */
+	public enum ReviewStatus {
+		TO_CHECK, PRELIM_MATCH, PROPOSED_EXCLUSION, EXCLUDED, VERIFIED
+	}
+
+	/** 待办原因：一个岗位可以同时有多项。 */
+	public enum TodoKind {
+		MISSING_PROFILE, MISSING_MATERIAL, MATERIAL_SCOPE, NEEDS_JUDGEMENT, CONFIRM_EXCLUSION
+	}
+
+	/**
+	 * 岗位材料范围的人工确认结果：
+	 * PAGE_COMPLETE 岗位页面即完整要求，没有其他适用材料；
+	 * REFERENCED_NO_EXTRA 岗位原文引用的材料已看过，没有与本岗位相关的额外条件；
+	 * REFERENCED_EXTRA_ADDED 引用材料中有额外条件，已补录。
+	 * 「看过但仍无法判断」不记录，待办保留。
+	 */
+	public enum MaterialResolution {
+		PAGE_COMPLETE, REFERENCED_NO_EXTRA, REFERENCED_EXTRA_ADDED
+	}
+
+	/**
 	 * 判断结论。
 	 * PARTIAL 只用于整体：已核查的条件都通过，但还有来源没核查完，不能说「符合」。
 	 * NOT_APPLICABLE 只用于单条：条件的适用对象不是本人（如只针对本科生的年龄要求）。

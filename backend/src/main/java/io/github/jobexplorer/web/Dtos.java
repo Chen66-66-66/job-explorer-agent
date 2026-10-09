@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import io.github.jobexplorer.domain.Announcement;
 import io.github.jobexplorer.domain.Company;
 import io.github.jobexplorer.domain.Enums.CompanyStatus;
+import io.github.jobexplorer.domain.Enums.MaterialResolution;
 import io.github.jobexplorer.domain.Enums.PositionStatus;
 import io.github.jobexplorer.domain.Enums.RequirementOrigin;
 import io.github.jobexplorer.domain.Enums.RequirementType;
@@ -91,6 +92,10 @@ public final class Dtos {
 
 	/** 本人对需人工判定条件的判定；verdict 为空表示撤销。 */
 	public record JudgementRequest(Verdict verdict, String note) {
+	}
+
+	/** 本人确认岗位的材料范围；resolution 为空表示撤销。 */
+	public record MaterialRequest(MaterialResolution resolution, String note) {
 	}
 
 	/** 人工确认一条条件；公司级条件同时确认是否适用于本批次全部岗位。 */

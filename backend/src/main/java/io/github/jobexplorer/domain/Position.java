@@ -3,6 +3,7 @@ package io.github.jobexplorer.domain;
 import java.time.Instant;
 import java.time.LocalDate;
 
+import io.github.jobexplorer.domain.Enums.MaterialResolution;
 import io.github.jobexplorer.domain.Enums.PositionStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -49,6 +50,19 @@ public class Position {
 
 	/** 最近一次完成条件核查（模型抽取成功或人工标记）的时间；为空表示尚未核查。 */
 	private Instant checkedAt;
+
+	/** 本人对材料范围的确认：岗位页面是否即完整要求、引用的公告附件是否已核对。原文改动后清空。 */
+	@Enumerated(EnumType.STRING)
+	@Column(columnDefinition = "varchar(40)")
+	private MaterialResolution materialResolution;
+
+	@Column(length = 1000)
+	private String materialNote;
+
+	private Instant materialResolvedAt;
+
+	/** 投递前本人对照官网核对过一遍的时间。原文改动后清空。 */
+	private Instant preApplyCheckedAt;
 
 	private Instant createdAt = Instant.now();
 
@@ -142,5 +156,32 @@ public class Position {
 
 	public Instant getCreatedAt() {
 		return createdAt;
+	}
+
+	public MaterialResolution getMaterialResolution() {
+		return materialResolution;
+	}
+
+	public String getMaterialNote() {
+		return materialNote;
+	}
+
+	public Instant getMaterialResolvedAt() {
+		return materialResolvedAt;
+	}
+
+	/** 记录材料范围的确认；resolution 为 null 表示撤销。 */
+	public void setMaterialResolution(MaterialResolution resolution, String note) {
+		this.materialResolution = resolution;
+		this.materialNote = resolution == null ? null : note;
+		this.materialResolvedAt = resolution == null ? null : Instant.now();
+	}
+
+	public Instant getPreApplyCheckedAt() {
+		return preApplyCheckedAt;
+	}
+
+	public void setPreApplyCheckedAt(Instant preApplyCheckedAt) {
+		this.preApplyCheckedAt = preApplyCheckedAt;
 	}
 }

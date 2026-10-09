@@ -21,7 +21,10 @@ import io.github.jobexplorer.repository.RequirementRepository;
 import io.github.jobexplorer.service.AssessmentService;
 import io.github.jobexplorer.service.AssessmentService.Assessment;
 import io.github.jobexplorer.service.NotFoundException;
+import io.github.jobexplorer.service.PositionReviewer.PositionReview;
 import io.github.jobexplorer.service.RequirementService;
+import io.github.jobexplorer.service.ReviewService;
+import io.github.jobexplorer.web.Dtos.MaterialRequest;
 import io.github.jobexplorer.web.Dtos.PositionRequest;
 import io.github.jobexplorer.web.Dtos.PositionView;
 import io.github.jobexplorer.web.Dtos.RequirementView;
@@ -40,12 +43,15 @@ public class PositionController {
 
 	private final AssessmentService assessments;
 
+	private final ReviewService reviews;
+
 	public PositionController(PositionRepository positions, RequirementRepository requirements,
-			RequirementService requirementService, AssessmentService assessments) {
+			RequirementService requirementService, AssessmentService assessments, ReviewService reviews) {
 		this.positions = positions;
 		this.requirements = requirements;
 		this.requirementService = requirementService;
 		this.assessments = assessments;
+		this.reviews = reviews;
 	}
 
 	@GetMapping("/{id}")
@@ -84,6 +90,22 @@ public class PositionController {
 	@GetMapping("/{id}/assessment")
 	public Assessment assessment(@PathVariable Long id) {
 		return assessments.assessPosition(id);
+	}
+
+	/** 主要状态、已核查的部分和待办。 */
+	@GetMapping("/{id}/review")
+	public PositionReview review(@PathVariable Long id) {
+		return reviews.review(id);
+	}
+
+	@PostMapping("/{id}/material")
+	public PositionReview material(@PathVariable Long id, @RequestBody MaterialRequest req) {
+		return reviews.resolveMaterial(id, req.resolution(), req.note());
+	}
+
+	@PostMapping("/{id}/pre-apply-check")
+	public PositionReview preApplyCheck(@PathVariable Long id) {
+		return reviews.markPreApplyChecked(id);
 	}
 
 	private Position find(Long id) {

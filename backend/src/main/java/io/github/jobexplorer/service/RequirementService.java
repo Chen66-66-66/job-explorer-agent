@@ -140,10 +140,12 @@ public class RequirementService {
 
 	/**
 	 * JD 原文改动后，旧的核查结论失效：重新核对岗位级条件的引用，
-	 * 模型抽取的条件退回待确认，岗位标记为尚未核查。
+	 * 模型抽取的条件退回待确认，岗位标记为尚未核查；材料范围的确认和投递前核对也一并失效。
 	 */
 	public void onJdChanged(Position pos) {
 		pos.setCheckedAt(null);
+		pos.setMaterialResolution(null, null);
+		pos.setPreApplyCheckedAt(null);
 		for (Requirement r : requirements.findByPositionIdOrderByIdAsc(pos.getId())) {
 			runSourceChecks(r);
 			if (r.getOrigin() == RequirementOrigin.LLM) {
