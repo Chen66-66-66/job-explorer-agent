@@ -9,7 +9,7 @@ import io.github.jobexplorer.domain.Requirement;
 /**
  * 一条条件的判断结果，连同原文出处与确认状态一起返回，便于用户核对。
  * ruleVerdict 是规则按档案算出的原始结论（把关降级之前），用来发现「确认后会被排除」的岗位；
- * pending 只在结论为「待核实」时有值，说明待核实的原因。
+ * pending 只在结论为「待核实」时有值，说明待核实的原因；judged 表示结论来自本人判定。
  */
 public record CheckResult(
 		Long requirementId,
@@ -27,7 +27,8 @@ public record CheckResult(
 		String alternativeGroup,
 		String parseIssue,
 		Verdict ruleVerdict,
-		PendingKind pending) {
+		PendingKind pending,
+		boolean judged) {
 
 	/** 确定结论（符合 / 不符合 / 不适用）。 */
 	static CheckResult of(Requirement r, Verdict verdict, String reason) {
@@ -41,18 +42,26 @@ public record CheckResult(
 	private static CheckResult of(Requirement r, Verdict verdict, String reason, PendingKind pending) {
 		return new CheckResult(r.getId(), r.getType(), r.getOrigin(), r.isCompanyLevel(), r.getDescription(), verdict,
 				reason, r.getQuote(), r.isQuoteVerified(), r.isConfirmed(), r.isAppliesToAllPositions(),
-				r.getAppliesTo(), r.getAlternativeGroup(), r.getParseIssue(), verdict, pending);
+				r.getAppliesTo(), r.getAlternativeGroup(), r.getParseIssue(), verdict, pending, false);
+	}
+
+	/** 本人对需人工判定条件的判定。 */
+	static CheckResult byJudgement(Requirement r, String reason) {
+		return new CheckResult(r.getId(), r.getType(), r.getOrigin(), r.isCompanyLevel(), r.getDescription(),
+				r.getManualVerdict(), reason, r.getQuote(), r.isQuoteVerified(), r.isConfirmed(), r.isAppliesToAllPositions(),
+				r.getAppliesTo(), r.getAlternativeGroup(), r.getParseIssue(), r.getManualVerdict(), null, true);
 	}
 
 	/** 把关降级为「待核实」：保留规则的原始结论，记录降级原因。 */
 	CheckResult downgrade(PendingKind newPending, String newReason) {
 		return new CheckResult(requirementId, type, origin, companyLevel, description, Verdict.UNKNOWN, newReason, quote,
 				quoteVerified, confirmed, appliesToAllPositions, appliesTo, alternativeGroup, parseIssue, ruleVerdict,
-				newPending);
+				newPending, judged);
 	}
 
 	CheckResult withReason(String newReason) {
 		return new CheckResult(requirementId, type, origin, companyLevel, description, verdict, newReason, quote,
-				quoteVerified, confirmed, appliesToAllPositions, appliesTo, alternativeGroup, parseIssue, ruleVerdict, pending);
+				quoteVerified, confirmed, appliesToAllPositions, appliesTo, alternativeGroup, parseIssue, ruleVerdict, pending,
+				judged);
 	}
 }

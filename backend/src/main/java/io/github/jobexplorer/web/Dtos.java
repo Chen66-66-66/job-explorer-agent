@@ -67,14 +67,16 @@ public final class Dtos {
 			String quote, boolean quoteVerified, String level, Double minScore, boolean allowEquivalent,
 			LocalDate minDate, LocalDate maxDate, Integer maxAge, boolean ageStrict, LocalDate ageReferenceDate,
 			String listValues, String appliesTo, String alternativeGroup, boolean confirmed,
-			boolean appliesToAllPositions, String parseIssue, Long announcementId, Long positionId) {
+			boolean appliesToAllPositions, String parseIssue, Verdict manualVerdict, String manualNote,
+			Long announcementId, Long positionId) {
 
 		static RequirementView of(Requirement r) {
 			return new RequirementView(r.getId(), r.getType(), r.getOrigin(), r.getDescription(), r.getQuote(),
 					r.isQuoteVerified(), r.getLevel(), r.getMinScore(), r.isAllowEquivalent(), r.getMinDate(),
 					r.getMaxDate(), r.getMaxAge(), r.isAgeStrict(), r.getAgeReferenceDate(), r.getListValues(),
 					r.getAppliesTo(), r.getAlternativeGroup(), r.isConfirmed(), r.isAppliesToAllPositions(),
-					r.getParseIssue(), r.getAnnouncement() == null ? null : r.getAnnouncement().getId(),
+					r.getParseIssue(), r.getManualVerdict(), r.getManualNote(),
+					r.getAnnouncement() == null ? null : r.getAnnouncement().getId(),
 					r.getPosition() == null ? null : r.getPosition().getId());
 		}
 	}
@@ -85,6 +87,10 @@ public final class Dtos {
 			Boolean allowEquivalent, LocalDate minDate, LocalDate maxDate, Integer maxAge, Boolean ageStrict,
 			LocalDate ageReferenceDate, String listValues, String appliesTo, String alternativeGroup,
 			Boolean appliesToAllPositions) {
+	}
+
+	/** 本人对需人工判定条件的判定；verdict 为空表示撤销。 */
+	public record JudgementRequest(Verdict verdict, String note) {
 	}
 
 	/** 人工确认一条条件；公司级条件同时确认是否适用于本批次全部岗位。 */

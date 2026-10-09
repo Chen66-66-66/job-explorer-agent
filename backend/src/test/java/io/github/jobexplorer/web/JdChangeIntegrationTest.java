@@ -1,6 +1,7 @@
 package io.github.jobexplorer.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 
@@ -95,5 +96,27 @@ class JdChangeIntegrationTest {
 		assertThat(positions.findById(positionId).orElseThrow().getCheckedAt()).isNotNull();
 		assertThat(requirements.findById(r.getId()).orElseThrow().isConfirmed()).isTrue();
 		assertThat(assessments.assessPosition(positionId).overall()).isEqualTo(Verdict.PASS);
+	}
+
+	@Test
+	void 修改JD后_本人判定一并清空() {
+		Requirement r = confirmedPosition();
+		requirementService.judge(r.getId(), Verdict.PASS, "测试判定");
+		positionController.update(r.getPosition().getId(), withJd("任职要求：本科及以上学历。"));
+		assertThat(requirements.findById(r.getId()).orElseThrow().getManualVerdict()).isNull();
+	}
+
+	@Test
+	void 未确认抽取时不能记录判定_且必须写依据() {
+		Company c = companies.save(new Company("测试公司2"));
+		Requirement r = new Requirement(c, RequirementType.OTHER, RequirementOrigin.LLM, "须为中共党员");
+		Long id = requirementService.verifyAndSave(r).getId();
+		assertThatThrownBy(() -> requirementService.judge(id, Verdict.PASS, "是党员"))
+			.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("先确认");
+		requirementService.confirm(id, false);
+		assertThatThrownBy(() -> requirementService.judge(id, Verdict.PASS, " "))
+			.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("依据");
+		requirementService.judge(id, Verdict.PASS, "是党员");
+		assertThat(requirements.findById(id).orElseThrow().getManualVerdict()).isEqualTo(Verdict.PASS);
 	}
 }

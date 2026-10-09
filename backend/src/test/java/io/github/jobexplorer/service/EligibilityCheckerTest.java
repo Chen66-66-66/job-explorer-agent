@@ -448,4 +448,53 @@ class EligibilityCheckerTest {
 		assertThat(result.ruleVerdict()).isEqualTo(Verdict.PASS);
 		assertThat(result.pending()).isNull();
 	}
+	// ---------- 本人判定 ----------
+
+	@Test
+	void 本人判定_解决规则判断不了的口径问题() {
+		Requirement r = req(RequirementType.MAJOR);
+		r.setListValues("计算机类");
+		r.setManualJudgement(Verdict.PASS, "计算机科学与技术属于计算机类");
+		CheckResult result = checker.check(r, profile, today);
+		assertThat(result.verdict()).isEqualTo(Verdict.PASS);
+		assertThat(result.judged()).isTrue();
+		assertThat(result.reason()).contains("本人判定").contains("计算机类");
+	}
+
+	@Test
+	void 本人判定_不能推翻规则算出的确定结论() {
+		Requirement r = req(RequirementType.ENGLISH);
+		r.setLevel("CET-6");
+		r.setManualJudgement(Verdict.PASS, "我觉得够");
+		assertThat(verdict(r)).isEqualTo(Verdict.FAIL);
+	}
+
+	@Test
+	void 本人判定_抽取未确认时不生效() {
+		Requirement r = llmReq(RequirementType.OTHER);
+		r.setManualJudgement(Verdict.PASS, "是党员");
+		assertThat(verdict(r)).isEqualTo(Verdict.UNKNOWN);
+		r.setConfirmed(true);
+		assertThat(verdict(r)).isEqualTo(Verdict.PASS);
+	}
+
+	@Test
+	void 本人判定不符合_公司级条件未确认适用全部岗位时不据此排除() {
+		Requirement r = req(RequirementType.OTHER);
+		r.setAppliesToAllPositions(false);
+		r.setManualJudgement(Verdict.FAIL, "不是党员");
+		assertThat(verdict(r)).isEqualTo(Verdict.UNKNOWN);
+		r.setAppliesToAllPositions(true);
+		assertThat(verdict(r)).isEqualTo(Verdict.FAIL);
+	}
+
+	@Test
+	void 本人判定_可以解决适用对象无法自动判断的问题() {
+		Requirement r = req(RequirementType.ENGLISH);
+		r.setLevel("CET-4");
+		r.setAppliesTo("研发类岗位");
+		assertThat(verdict(r)).isEqualTo(Verdict.UNKNOWN);
+		r.setManualJudgement(Verdict.PASS, "本岗位属于研发类，四级已过");
+		assertThat(verdict(r)).isEqualTo(Verdict.PASS);
+	}
 }

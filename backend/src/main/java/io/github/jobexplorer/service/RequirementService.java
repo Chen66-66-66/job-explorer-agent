@@ -18,6 +18,7 @@ import io.github.jobexplorer.domain.Announcement;
 import io.github.jobexplorer.domain.Company;
 import io.github.jobexplorer.domain.Enums.RequirementOrigin;
 import io.github.jobexplorer.domain.Enums.RequirementType;
+import io.github.jobexplorer.domain.Enums.Verdict;
 import io.github.jobexplorer.domain.Position;
 import io.github.jobexplorer.domain.Requirement;
 import io.github.jobexplorer.repository.AnnouncementRepository;
@@ -102,6 +103,28 @@ public class RequirementService {
 		return r;
 	}
 
+	/**
+	 * 本人对「需人工判定」的条件记录判定（符合 / 不符合）及依据；verdict 为 null 表示撤销。
+	 * 必须先确认抽取无误：判定针对的是读对了的要求。判定只在规则判断不了时生效。
+	 */
+	public Requirement judge(Long requirementId, Verdict verdict, String note) {
+		Requirement r = requirements.findById(requirementId)
+			.orElseThrow(() -> new NotFoundException("条件", requirementId));
+		if (verdict != null) {
+			if (verdict != Verdict.PASS && verdict != Verdict.FAIL) {
+				throw new IllegalArgumentException("判定只能是「符合」或「不符合」");
+			}
+			if (!r.isConfirmed()) {
+				throw new IllegalArgumentException("请先确认抽取无误，再记录判定");
+			}
+			if (note == null || note.isBlank()) {
+				throw new IllegalArgumentException("请写明判定依据，例如「已电话确认电子信息属于相关专业」");
+			}
+		}
+		r.setManualJudgement(verdict, note == null ? null : note.trim());
+		return r;
+	}
+
 	/** 人工逐条看过公告，确认条件已录全（例如没有用模型抽取时）。 */
 	public void markAnnouncementChecked(Long announcementId) {
 		announcements.findById(announcementId)
@@ -126,6 +149,8 @@ public class RequirementService {
 			if (r.getOrigin() == RequirementOrigin.LLM) {
 				r.setConfirmed(false);
 			}
+			// 原文变了，针对旧原文的判定不再成立
+			r.setManualJudgement(null, null);
 		}
 	}
 

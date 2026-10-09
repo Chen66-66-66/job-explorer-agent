@@ -1,9 +1,11 @@
 package io.github.jobexplorer.domain;
 
+import java.time.Instant;
 import java.time.LocalDate;
 
 import io.github.jobexplorer.domain.Enums.RequirementOrigin;
 import io.github.jobexplorer.domain.Enums.RequirementType;
+import io.github.jobexplorer.domain.Enums.Verdict;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -91,6 +93,19 @@ public class Requirement {
 
 	/** 公司级条件是否确认适用于本批次全部岗位。只有确认过的，才能用来整家剪枝。 */
 	private boolean appliesToAllPositions;
+
+	/**
+	 * 本人对「需人工判定」条件的判定（符合 / 不符合）及依据。
+	 * 只在规则无法给出确定结论时生效，不推翻规则算出的结论；原文改动后清空。
+	 */
+	@Enumerated(EnumType.STRING)
+	@Column(columnDefinition = "varchar(40)")
+	private Verdict manualVerdict;
+
+	@Column(length = 1000)
+	private String manualNote;
+
+	private Instant manualAt;
 
 	/** 程序发现的解析问题，如日期无法解析、数值与原文不一致；有问题则只能待核实。 */
 	@Column(length = 1000)
@@ -270,6 +285,25 @@ public class Requirement {
 
 	public void setParseIssue(String parseIssue) {
 		this.parseIssue = parseIssue;
+	}
+
+	public Verdict getManualVerdict() {
+		return manualVerdict;
+	}
+
+	public String getManualNote() {
+		return manualNote;
+	}
+
+	public Instant getManualAt() {
+		return manualAt;
+	}
+
+	/** 记录本人判定；verdict 为 null 表示撤销。 */
+	public void setManualJudgement(Verdict verdict, String note) {
+		this.manualVerdict = verdict;
+		this.manualNote = verdict == null ? null : note;
+		this.manualAt = verdict == null ? null : Instant.now();
 	}
 
 	public boolean isCompanyLevel() {

@@ -21,6 +21,7 @@ import io.github.jobexplorer.repository.PositionRepository;
 import io.github.jobexplorer.service.NotFoundException;
 import io.github.jobexplorer.service.RequirementService;
 import io.github.jobexplorer.web.Dtos.ConfirmRequest;
+import io.github.jobexplorer.web.Dtos.JudgementRequest;
 import io.github.jobexplorer.web.Dtos.RequirementRequest;
 import io.github.jobexplorer.web.Dtos.RequirementView;
 import jakarta.validation.Valid;
@@ -89,6 +90,11 @@ public class RequirementController {
 	public RequirementView confirm(@PathVariable Long id, @RequestBody(required = false) ConfirmRequest req) {
 		boolean all = req != null && Boolean.TRUE.equals(req.appliesToAllPositions());
 		return RequirementView.of(requirementService.confirm(id, all));
+	}
+
+	@PostMapping("/requirements/{id}/judgement")
+	public RequirementView judge(@PathVariable Long id, @RequestBody JudgementRequest req) {
+		return RequirementView.of(requirementService.judge(id, req.verdict(), req.note()));
 	}
 
 	@PostMapping("/announcements/{id}/mark-checked")

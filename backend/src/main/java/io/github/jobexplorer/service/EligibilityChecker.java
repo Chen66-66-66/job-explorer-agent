@@ -49,9 +49,14 @@ public class EligibilityChecker {
 		CheckResult raw = checkByType(r, p, today);
 		if (raw.verdict() == Verdict.UNKNOWN) {
 			// 规则本身已判待核实，也要把出处问题说出来，避免把找不到的引用当成原文
-			return r.getOrigin() == RequirementOrigin.LLM && !r.isQuoteVerified()
-					? raw.withReason("原文出处未能核对；" + raw.reason())
-					: raw;
+			if (r.getOrigin() == RequirementOrigin.LLM && !r.isQuoteVerified()) {
+				return raw.withReason("原文出处未能核对；" + raw.reason());
+			}
+			// 只有规则判断不了的口径问题，才采用本人判定；规则算得出的结论不被判定推翻
+			if (raw.pending() == PendingKind.NEEDS_JUDGEMENT && hasJudgement(r)) {
+				return scoped(r, judgement(r, raw.reason()));
+			}
+			return raw;
 		}
 		String computed = "规则计算为「" + label(raw.verdict()) + "」（" + raw.reason() + "）";
 		if (r.getOrigin() == RequirementOrigin.LLM && !r.isQuoteVerified()) {
@@ -65,12 +70,31 @@ public class EligibilityChecker {
 			return raw.downgrade(PendingKind.CONFIRM_EXTRACTION, "解析结果待人工确认；" + computed);
 		}
 		if (applicability == Applicability.UNSURE) {
+			if (hasJudgement(r)) {
+				return scoped(r, judgement(r, "适用对象「" + r.getAppliesTo() + "」；" + computed));
+			}
 			return raw.downgrade(PendingKind.NEEDS_JUDGEMENT, "适用对象「" + r.getAppliesTo() + "」无法自动判断是否包括本人；" + computed);
 		}
-		if (raw.verdict() == Verdict.FAIL && r.isCompanyLevel() && !r.isAppliesToAllPositions()) {
-			return raw.downgrade(PendingKind.CONFIRM_EXTRACTION, "尚未确认该条件适用于本批次全部岗位，不据此排除；" + computed);
+		return scoped(r, raw);
+	}
+
+	/** 本人判定只对已确认抽取无误的条件生效。 */
+	private static boolean hasJudgement(Requirement r) {
+		return r.isConfirmed() && r.getManualVerdict() != null;
+	}
+
+	private static CheckResult judgement(Requirement r, String ruleInfo) {
+		return CheckResult.byJudgement(r, "本人判定为「" + label(r.getManualVerdict()) + "」：" + r.getManualNote()
+				+ "（规则无法自动判断：" + ruleInfo + "）");
+	}
+
+	/** 公司级条件只有确认适用于本批次全部岗位，才能据此排除。 */
+	private static CheckResult scoped(Requirement r, CheckResult result) {
+		if (result.verdict() == Verdict.FAIL && r.isCompanyLevel() && !r.isAppliesToAllPositions()) {
+			return result.downgrade(PendingKind.CONFIRM_EXTRACTION,
+					"尚未确认该条件适用于本批次全部岗位，不据此排除；结论为「不符合」（" + result.reason() + "）");
 		}
-		return raw;
+		return result;
 	}
 
 	private enum Applicability {
