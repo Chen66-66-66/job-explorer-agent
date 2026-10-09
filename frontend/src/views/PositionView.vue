@@ -3,6 +3,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { api, MATERIAL_LABEL, POSITION_STATUS_LABEL, TODO_KIND_LABEL } from '../api.js'
 import CheckList from '../components/CheckList.vue'
+import RejectionList from '../components/RejectionList.vue'
 import RequirementForm from '../components/RequirementForm.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import VerdictBadge from '../components/VerdictBadge.vue'
@@ -13,6 +14,8 @@ const positionId = Number(props.id)
 const position = ref(null)
 const assessment = ref({ overall: 'UNKNOWN', results: [], pending: [] })
 const review = ref(null)
+const rejections = ref([])
+const notice = ref('')
 const error = ref('')
 const busy = ref(false)
 const showReq = ref(false)
@@ -25,10 +28,11 @@ const materialTodo = computed(() =>
 async function load() {
   error.value = ''
   try {
-    ;[position.value, assessment.value, review.value] = await Promise.all([
+    ;[position.value, assessment.value, review.value, rejections.value] = await Promise.all([
       api.position(positionId),
       api.positionAssessment(positionId),
       api.positionReview(positionId),
+      api.positionRejections(positionId),
     ])
   } catch (e) {
     error.value = e.message
@@ -37,6 +41,7 @@ async function load() {
 
 async function run(fn) {
   error.value = ''
+  notice.value = ''
   busy.value = true
   try {
     await fn()
@@ -48,14 +53,23 @@ async function run(fn) {
   }
 }
 
-const extract = () => run(() => api.extractPosition(positionId))
+const extract = () => run(async () => reportSkipped(await api.extractPosition(positionId)))
 const markChecked = () => run(() => api.markPositionChecked(positionId))
 const setStatus = (status) => run(() => api.updatePosition(positionId, { ...position.value, status }))
 
 const confirm = (id, appliesAll) => run(() => api.confirmRequirement(id, appliesAll))
 const judge = (id, verdict, note) => run(() => api.judgeRequirement(id, verdict, note))
 const remove = (id) => {
-  if (window.confirm('确定删除这条条件？重新抽取时模型可能再次抽出它。')) run(() => api.deleteRequirement(id))
+  if (window.confirm('确定删除这条人工录入的条件？')) run(() => api.deleteRequirement(id))
+}
+const reject = (id, reason, note) => run(() => api.rejectRequirement(id, reason, note))
+const restore = (id) => run(() => api.restoreRejection(id))
+
+// 与此前驳回过的抽取完全相同的结果不会再保存，告诉用户跳过了几条
+function reportSkipped(result) {
+  if (result.skipped.length) {
+    notice.value = `有 ${result.skipped.length} 条抽取结果与此前驳回的完全相同，已跳过（见驳回记录）`
+  }
 }
 
 const saveMaterial = () =>
@@ -84,6 +98,7 @@ onMounted(load)
 <template>
   <main v-if="position" class="page">
     <p v-if="error" class="error-banner">{{ error }}</p>
+    <p v-if="notice" class="notice">{{ notice }}</p>
     <p class="muted">
       <router-link to="/">公司</router-link> /
       <router-link :to="`/companies/${position.companyId}`">{{ position.companyName }}</router-link> /
@@ -181,7 +196,8 @@ onMounted(load)
       <div v-if="showReq" class="card">
         <RequirementForm :company-id="position.companyId" :position-id="positionId" @saved="load" />
       </div>
-      <CheckList :results="assessment.results" @confirm="confirm" @remove="remove" @judge="judge" />
+      <CheckList :results="assessment.results" @confirm="confirm" @remove="remove" @judge="judge" @reject="reject" />
+      <RejectionList :rejections="rejections" @restore="restore" />
     </section>
 
     <section class="card">

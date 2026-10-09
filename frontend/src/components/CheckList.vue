@@ -1,20 +1,31 @@
 <script setup>
 // 逐条展示判断结果：结论、理由、原文引用、核对与确认状态。
 // 模型抽取的条件需要人工确认后才参与确定性判断；规则判断不了的口径问题，由本人判定并写明依据。
+// 模型抽错的条件要「驳回」并选原因（留下记录），人工录入的直接删除。
 import { reactive } from 'vue'
 import VerdictBadge from './VerdictBadge.vue'
-import { ORIGIN_LABEL, PENDING_LABEL, TYPE_LABEL } from '../api.js'
+import { ORIGIN_LABEL, PENDING_LABEL, REJECTION_REASON_LABEL, TYPE_LABEL } from '../api.js'
 
 defineProps({ results: { type: Array, required: true } })
-const emit = defineEmits(['confirm', 'remove', 'judge'])
+const emit = defineEmits(['confirm', 'remove', 'judge', 'reject'])
 
 // 公司级条件确认时，是否同时确认「适用于本批次全部岗位」
 const appliesAll = reactive({})
 // 本人判定的依据，按条件分别填写
 const notes = reactive({})
 
+// 正在驳回的条件：选择的原因和说明
+const rejecting = reactive({})
+// 读错了的，驳回后可以手动录入一条正确的
+const FIXABLE = ['WRONG_VALUE', 'WRONG_TYPE', 'WRONG_SCOPE']
+
 function judge(r, verdict) {
   emit('judge', r.requirementId, verdict, notes[r.requirementId] || '')
+}
+
+// 驳回成功后这条条件会从列表消失；失败时表单保留，已填的说明不丢
+function reject(id) {
+  emit('reject', id, rejecting[id].reason, rejecting[id].note)
 }
 </script>
 
@@ -59,7 +70,22 @@ function judge(r, verdict) {
           <button @click="judge(r, 'FAIL')">判定不符合</button>
         </template>
         <button v-if="r.judged" class="link" @click="emit('judge', r.requirementId, null, '')">撤销本人判定</button>
-        <button class="link" @click="emit('remove', r.requirementId)">删除（抽错了）</button>
+        <template v-if="r.origin === 'LLM'">
+          <button v-if="!rejecting[r.requirementId]" class="link"
+            @click="rejecting[r.requirementId] = { reason: 'NOT_IN_SOURCE', note: '' }">驳回（抽错了）</button>
+        </template>
+        <button v-else class="link" @click="emit('remove', r.requirementId)">删除</button>
+      </div>
+      <div v-if="rejecting[r.requirementId]" class="row confirm">
+        <select v-model="rejecting[r.requirementId].reason" style="width: auto">
+          <option v-for="(label, key) in REJECTION_REASON_LABEL" :key="key" :value="key">{{ label }}</option>
+        </select>
+        <input v-model="rejecting[r.requirementId].note" class="note" placeholder="说明（选「其他」时必填）" />
+        <button @click="reject(r.requirementId)">确认驳回</button>
+        <button class="link" @click="delete rejecting[r.requirementId]">取消</button>
+        <span v-if="FIXABLE.includes(rejecting[r.requirementId].reason)" class="muted">
+          驳回后可用「手动录入」补一条正确的
+        </span>
       </div>
     </li>
   </ul>

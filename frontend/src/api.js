@@ -38,6 +38,10 @@ export const api = {
 
   addRequirement: (body) => request('POST', '/requirements', body),
   deleteRequirement: (id) => request('DELETE', `/requirements/${id}`),
+  rejectRequirement: (id, reason, note) => request('POST', `/requirements/${id}/reject`, { reason, note }),
+  positionRejections: (id) => request('GET', `/positions/${id}/rejections`),
+  companyRejections: (id) => request('GET', `/companies/${id}/rejections`),
+  restoreRejection: (id) => request('POST', `/rejections/${id}/restore`),
   confirmRequirement: (id, appliesToAllPositions) =>
     request('POST', `/requirements/${id}/confirm`, { appliesToAllPositions }),
   judgeRequirement: (id, verdict, note) => request('POST', `/requirements/${id}/judgement`, { verdict, note }),
@@ -95,6 +99,16 @@ export const MATERIAL_LABEL = {
   PAGE_COMPLETE: '岗位页面即完整要求',
   REFERENCED_NO_EXTRA: '引用材料已核对，没有额外条件',
   REFERENCED_EXTRA_ADDED: '引用材料已核对，额外条件已补录',
+}
+
+export const REJECTION_REASON_LABEL = {
+  NOT_IN_SOURCE: '原文没有这个要求',
+  NOT_A_REQUIREMENT: '不是报名硬性条件',
+  WRONG_VALUE: '数值或参数读错',
+  WRONG_TYPE: '条件类型错',
+  WRONG_SCOPE: '适用对象或分组错',
+  DUPLICATE: '与另一条重复',
+  OTHER: '其他',
 }
 
 export const ORIGIN_LABEL = { LLM: '模型抽取', MANUAL: '人工录入', DEMO: '演示数据' }

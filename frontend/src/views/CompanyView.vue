@@ -3,6 +3,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { api, POSITION_STATUS_LABEL, STATUS_LABEL } from '../api.js'
 import CheckList from '../components/CheckList.vue'
+import RejectionList from '../components/RejectionList.vue'
 import RequirementForm from '../components/RequirementForm.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import VerdictBadge from '../components/VerdictBadge.vue'
@@ -15,6 +16,8 @@ const assessment = ref({ overall: 'UNKNOWN', results: [], pending: [] })
 const announcements = ref([])
 const positions = ref([])
 const notes = ref([])
+const rejections = ref([])
+const notice = ref('')
 const error = ref('')
 const busy = ref(false)
 
@@ -31,13 +34,15 @@ function today() {
 async function load() {
   error.value = ''
   try {
-    ;[company.value, assessment.value, announcements.value, positions.value, notes.value] = await Promise.all([
-      api.company(companyId),
-      api.companyAssessment(companyId),
-      api.announcements(companyId),
-      api.positions(companyId),
-      api.notes(companyId),
-    ])
+    ;[company.value, assessment.value, announcements.value, positions.value, notes.value, rejections.value] =
+      await Promise.all([
+        api.company(companyId),
+        api.companyAssessment(companyId),
+        api.announcements(companyId),
+        api.positions(companyId),
+        api.notes(companyId),
+        api.companyRejections(companyId),
+      ])
   } catch (e) {
     error.value = e.message
   }
@@ -45,6 +50,7 @@ async function load() {
 
 async function run(fn) {
   error.value = ''
+  notice.value = ''
   busy.value = true
   try {
     await fn()
@@ -65,7 +71,7 @@ const addAnnouncement = () =>
     show.ann = false
   })
 
-const extract = (annId) => run(() => api.extractAnnouncement(annId))
+const extract = (annId) => run(async () => reportSkipped(await api.extractAnnouncement(annId)))
 const markChecked = (annId) => run(() => api.markAnnouncementChecked(annId))
 
 const addPosition = () =>
@@ -88,7 +94,16 @@ const addNote = () =>
 const confirm = (id, appliesAll) => run(() => api.confirmRequirement(id, appliesAll))
 const judge = (id, verdict, note) => run(() => api.judgeRequirement(id, verdict, note))
 const remove = (id) => {
-  if (window.confirm('确定删除这条条件？重新抽取时模型可能再次抽出它。')) run(() => api.deleteRequirement(id))
+  if (window.confirm('确定删除这条人工录入的条件？')) run(() => api.deleteRequirement(id))
+}
+const reject = (id, reason, note) => run(() => api.rejectRequirement(id, reason, note))
+const restore = (id) => run(() => api.restoreRejection(id))
+
+// 与此前驳回过的抽取完全相同的结果不会再保存，告诉用户跳过了几条
+function reportSkipped(result) {
+  if (result.skipped.length) {
+    notice.value = `有 ${result.skipped.length} 条抽取结果与此前驳回的完全相同，已跳过（见驳回记录）`
+  }
 }
 
 onMounted(load)
@@ -97,6 +112,7 @@ onMounted(load)
 <template>
   <main v-if="company" class="page">
     <p v-if="error" class="error-banner">{{ error }}</p>
+    <p v-if="notice" class="notice">{{ notice }}</p>
     <p class="muted"><router-link to="/">公司</router-link> / {{ company.name }}</p>
 
     <section class="card">
@@ -134,7 +150,8 @@ onMounted(load)
       <ul v-if="assessment.pending.length" class="pending">
         <li v-for="p in assessment.pending" :key="p">{{ p }}</li>
       </ul>
-      <CheckList :results="assessment.results" @confirm="confirm" @remove="remove" @judge="judge" />
+      <CheckList :results="assessment.results" @confirm="confirm" @remove="remove" @judge="judge" @reject="reject" />
+      <RejectionList :rejections="rejections" @restore="restore" />
     </section>
 
     <section class="card">

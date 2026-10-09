@@ -176,6 +176,14 @@ label {
   font-size: 13px;
 }
 
+.notice {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: var(--accent);
+  background: #ddf4ff;
+}
+
 /* 操作出错时的提示固定在页面顶部：在页面下方点按钮出错，也能看到 */
 .error-banner {
   position: sticky;
