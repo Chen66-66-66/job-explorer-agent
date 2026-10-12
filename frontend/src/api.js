@@ -17,6 +17,7 @@ export const api = {
   companies: () => request('GET', '/companies'),
   company: (id) => request('GET', `/companies/${id}`),
   createCompany: (body) => request('POST', '/companies', body),
+  importSample: (bundle) => request('POST', '/import', bundle),
   updateCompany: (id, body) => request('PATCH', `/companies/${id}`, body),
   companyAssessment: (id) => request('GET', `/companies/${id}/assessment`),
 
@@ -110,6 +111,8 @@ export const REJECTION_REASON_LABEL = {
   DUPLICATE: '与另一条重复',
   OTHER: '其他',
 }
+
+export const IMPORT_OUTCOME_LABEL = { CREATED: '新增', UPDATED: '更新', UNCHANGED: '无变化', SKIPPED: '未导入' }
 
 export const ORIGIN_LABEL = { LLM: '模型抽取', MANUAL: '人工录入', DEMO: '演示数据' }
 

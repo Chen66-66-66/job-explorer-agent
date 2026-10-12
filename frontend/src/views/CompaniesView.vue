@@ -2,11 +2,13 @@
 // 第一层：公司列表。公司级条件不符合的会被标为「不符合」，下面的岗位不必再看。
 import { computed, onMounted, reactive, ref } from 'vue'
 import { api, STATUS_LABEL } from '../api.js'
+import ImportPanel from '../components/ImportPanel.vue'
 import VerdictBadge from '../components/VerdictBadge.vue'
 
 const companies = ref([])
 const error = ref('')
 const showForm = ref(false)
+const showImport = ref(false)
 const form = reactive({ name: '', groupName: '', platform: '', careerSiteUrl: '', summary: '' })
 
 const ORDER = { PASS: 0, UNKNOWN: 1, FAIL: 2 }
@@ -40,13 +42,18 @@ onMounted(load)
   <main class="page">
     <div class="row spread">
       <h1>公司</h1>
-      <button class="primary" @click="showForm = !showForm">{{ showForm ? '取消' : '添加公司' }}</button>
+      <div class="row">
+        <button @click="showImport = !showImport">{{ showImport ? '收起导入' : '导入样本' }}</button>
+        <button class="primary" @click="showForm = !showForm">{{ showForm ? '取消' : '添加公司' }}</button>
+      </div>
     </div>
     <p class="muted">
       共 {{ companies.length }} 家，其中 {{ pruned }} 家因公告硬条件不符合被剪掉。
       按「符合 → 待核实 → 不符合」排序。
     </p>
     <p v-if="error" class="error">{{ error }}</p>
+
+    <ImportPanel v-if="showImport" @imported="load" />
 
     <form v-if="showForm" class="card" @submit.prevent="create">
       <div class="grid2">
