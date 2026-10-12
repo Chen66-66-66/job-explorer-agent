@@ -19,6 +19,9 @@ frontend/dist/
 eval/private/
 eval/reports/
 
+# 样本导入：真实招聘材料只留在本机
+samples/private/
+
 # 本人笔记与 Office 临时文件，不上传
 *.docx
 ~$*

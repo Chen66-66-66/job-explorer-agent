@@ -1,0 +1,51 @@
+{
+  "company": {
+    "name": "示例电网数字科技公司（虚构）",
+    "groupName": "示例电网集团（虚构）",
+    "careerSiteUrl": "https://example.com/careers",
+    "platform": "北森"
+  },
+  "announcements": [
+    {
+      "title": "示例电网数字科技 2027 届校园招聘公告（虚构）",
+      "sourceUrl": "https://example.com/careers/notice-2027",
+      "viewedAt": "2026-10-12",
+      "content": "一、招聘对象\n2027 届国内外高校毕业生。境外院校毕业生须取得教育部留学服务中心学历学位认证。\n\n二、基本条件\n1. 本科及以上学历；本科生年龄不超过 24 周岁，硕士研究生年龄不超过 27 周岁（年龄计算截至 2026 年 12 月 31 日）。\n2. 通过大学英语四级（CET-4 425 分及以上）或具有同等英语水平。\n3. 遵纪守法，身体健康。\n\n三、报名方式\n登录招聘网站投递简历，报名截止时间以各岗位页面为准。"
+    }
+  ],
+  "positions": [
+    {
+      "title": "数据开发工程师",
+      "unit": "数据中台部",
+      "location": "郑州",
+      "deadline": "2026-10-30",
+      "sourceUrl": "https://example.com/careers/job/1001",
+      "viewedAt": "2026-10-12",
+      "jdText": "岗位职责：负责业务数据仓库建模与 ETL 开发，建立数据质量校验规则。\n任职要求：计算机科学与技术、软件工程、数据科学与大数据技术等相关专业，硕士研究生及以上学历；熟悉 SQL，掌握 Java 或 Python。"
+    },
+    {
+      "title": "信息化运维工程师",
+      "unit": "运维中心",
+      "location": "许昌",
+      "sourceUrl": "https://example.com/careers/job/1002",
+      "viewedAt": "2026-10-12",
+      "jdText": "岗位职责：负责信息系统日常运维与故障处理。\n任职要求：电子信息类相关专业，本科及以上学历。其他要求详见招聘公告。"
+    },
+    {
+      "title": "网络安全工程师",
+      "unit": "安全运营部",
+      "location": "郑州",
+      "deadline": "2026-10-25",
+      "sourceUrl": "https://example.com/careers/job/1003",
+      "viewedAt": "2026-10-12",
+      "jdText": "岗位职责：负责安全监测与漏洞处置。\n任职要求：网络空间安全、计算机相关专业，硕士研究生及以上学历；须持有 CISP 证书；中共党员优先。"
+    },
+    {
+      "title": "数字化项目管理岗",
+      "unit": "项目管理部",
+      "location": "郑州",
+      "deadline": "2026-10-30",
+      "viewedAt": "2026-10-12"
+    }
+  ]
+}

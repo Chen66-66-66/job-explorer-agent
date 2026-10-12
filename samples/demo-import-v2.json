@@ -1,0 +1,16 @@
+{
+  "company": {
+    "name": "示例电网数字科技公司（虚构）"
+  },
+  "positions": [
+    {
+      "title": "数据开发工程师",
+      "unit": "数据中台部",
+      "location": "郑州",
+      "deadline": "2026-11-06",
+      "sourceUrl": "https://example.com/careers/job/1001",
+      "viewedAt": "2026-10-15",
+      "jdText": "岗位职责：负责业务数据仓库建模与 ETL 开发，建立数据质量校验规则。\n任职要求：计算机科学与技术、软件工程、数据科学与大数据技术等相关专业，硕士研究生及以上学历；熟悉 SQL，掌握 Java 或 Python；通过大学英语六级。"
+    }
+  ]
+}
