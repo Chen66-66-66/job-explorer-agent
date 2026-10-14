@@ -112,6 +112,18 @@ class PositionReviewerTest {
 	}
 
 	@Test
+	void 因本人判定而排除时_原因说明是本人判定() {
+		CheckResult judged = new CheckResult(ids++, RequirementType.MAJOR, RequirementOrigin.LLM, false, "电子信息类相关专业",
+				Verdict.FAIL, "本人判定为「不符合」", null, true, true, false, null, null, null, Verdict.FAIL, null, true);
+		PositionReview r = review(PAGE_COMPLETE, null, confirmedPass("硕士及以上"), judged);
+		assertThat(r.status()).isEqualTo(ReviewStatus.EXCLUDED);
+		assertThat(r.statusReason()).isEqualTo("本人判定有条件不符合");
+
+		PositionReview both = review(PAGE_COMPLETE, null, judged, result("博士", Verdict.FAIL, Verdict.FAIL, null, true, null));
+		assertThat(both.statusReason()).contains("其中包括本人判定");
+	}
+
+	@Test
 	void 档案缺信息时是待核查() {
 		PositionReview r = review(PAGE_COMPLETE, null, confirmedPass("硕士及以上"),
 				result("2027 届", Verdict.UNKNOWN, Verdict.UNKNOWN, PendingKind.MISSING_PROFILE, true, null));

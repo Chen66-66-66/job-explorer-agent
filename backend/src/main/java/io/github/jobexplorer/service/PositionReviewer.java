@@ -85,6 +85,8 @@ public final class PositionReviewer {
 		List<String> verified = new ArrayList<>();
 		List<String> unverified = new ArrayList<>();
 		boolean allConfirmedPass = true;
+		boolean judgedFail = false;
+		boolean ruleFail = false;
 		for (CheckResult r : a.results()) {
 			String group = r.alternativeGroup();
 			if (r.verdict() == Verdict.NOT_APPLICABLE || group != null && groupPassed.get(group) && r.verdict() != Verdict.PASS) {
@@ -101,6 +103,10 @@ public final class PositionReviewer {
 				continue;
 			}
 			allConfirmedPass = false;
+			if (r.verdict() == Verdict.FAIL) {
+				judgedFail |= r.judged();
+				ruleFail |= !r.judged();
+			}
 			if (r.verdict() != Verdict.UNKNOWN) {
 				continue;
 			}
@@ -133,7 +139,8 @@ public final class PositionReviewer {
 		String reason;
 		if (a.overall() == Verdict.FAIL) {
 			status = ReviewStatus.EXCLUDED;
-			reason = "已确认的条件不符合";
+			reason = !judgedFail ? "已确认的条件不符合"
+					: ruleFail ? "已确认的条件不符合，其中包括本人判定不符合的条件" : "本人判定有条件不符合";
 		}
 		else if (has(todos, TodoKind.CONFIRM_EXCLUSION)) {
 			status = ReviewStatus.PROPOSED_EXCLUSION;

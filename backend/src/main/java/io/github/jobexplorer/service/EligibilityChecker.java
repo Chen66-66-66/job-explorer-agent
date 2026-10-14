@@ -168,7 +168,8 @@ public class EligibilityChecker {
 		}
 		for (String mine : p.majors()) {
 			for (String want : required) {
-				if (mine.contains(want) || want.contains(mine)) {
+				String core = majorCore(want);
+				if (mine.contains(want) || want.contains(mine) || core.length() >= 2 && mine.contains(core)) {
 					return CheckResult.unknown(r, PendingKind.NEEDS_JUDGEMENT, "档案专业「" + mine + "」与名单中的「" + want + "」相近但不完全一致，需人工确认");
 				}
 			}
@@ -328,6 +329,11 @@ public class EligibilityChecker {
 			return "IELTS";
 		}
 		return t;
+	}
+
+	/** 去掉「相关专业」「类」等泛称，只用来提示「相近」，如「计算机相关专业」→「计算机」。符不符合仍要人确认。 */
+	static String majorCore(String want) {
+		return want.replaceAll("(等)?(相关)?专业$", "").replaceAll("相关$", "").replaceAll("类$", "").trim();
 	}
 
 	private static List<String> splitList(String values) {

@@ -300,6 +300,24 @@ class EligibilityCheckerTest {
 	}
 
 	@Test
+	void 专业名单写成泛称时_提示相近_仍需人工确认() {
+		Requirement r = req(RequirementType.MAJOR);
+		r.setListValues("网络空间安全、计算机相关专业");
+		CheckResult similar = checker.check(r, profile, today);
+		assertThat(similar.verdict()).isEqualTo(Verdict.UNKNOWN);
+		assertThat(similar.pending()).isEqualTo(PendingKind.NEEDS_JUDGEMENT);
+		assertThat(similar.reason()).contains("相近").contains("计算机相关专业");
+
+		r.setListValues("电子信息类相关专业");
+		CheckResult other = checker.check(r, profile, today);
+		assertThat(other.verdict()).isEqualTo(Verdict.UNKNOWN);
+		assertThat(other.reason()).contains("未出现在名单中");
+
+		assertThat(EligibilityChecker.majorCore("电子信息类相关专业")).isEqualTo("电子信息");
+		assertThat(EligibilityChecker.majorCore("计算机科学与技术等相关专业")).isEqualTo("计算机科学与技术");
+	}
+
+	@Test
 	void 已过截止日_不符合() {
 		Requirement r = req(RequirementType.DEADLINE);
 		r.setMaxDate(LocalDate.of(2026, 9, 25));
